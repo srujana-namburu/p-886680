@@ -31,8 +31,15 @@ const JobSeekerNav = () => {
   ];
 
   const handleLogout = async () => {
-    await signOut();
-    navigate('/');
+    try {
+      await signOut();
+      // Force navigation to home page after logout
+      window.location.href = '/';
+    } catch (error) {
+      console.error('Error during logout:', error);
+      // Fallback: still redirect to home even if there's an error
+      window.location.href = '/';
+    }
   };
 
   const isActiveRoute = (path: string) => location.pathname === path;

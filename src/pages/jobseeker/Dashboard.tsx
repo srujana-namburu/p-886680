@@ -1,4 +1,3 @@
-
 import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -52,11 +51,14 @@ const JobSeekerDashboard = () => {
   const { data: userApplications = [], refetch: refetchApplications } = useUserApplications();
 
   const toggleJobExpansion = (jobId: string) => {
+    console.log('Toggling job expansion for job ID:', jobId);
     const newExpanded = new Set(expandedJobs);
     if (newExpanded.has(jobId)) {
       newExpanded.delete(jobId);
+      console.log('Job collapsed:', jobId);
     } else {
       newExpanded.add(jobId);
+      console.log('Job expanded:', jobId);
       // Increment view count when job is viewed
       jobService.incrementJobViews(jobId);
     }
