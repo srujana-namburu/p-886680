@@ -150,10 +150,9 @@ export const jobService = {
   },
 
   async incrementJobViews(jobId: string): Promise<void> {
-    const { error } = await supabase
-      .from('job_postings')
-      .update({ views_count: supabase.sql`views_count + 1` })
-      .eq('id', jobId);
+    const { error } = await supabase.rpc('increment_job_views', {
+      job_id: jobId
+    });
 
     if (error) {
       console.error('Error incrementing job views:', error);
@@ -186,7 +185,7 @@ export const applicationService = {
       console.error('Error fetching applications:', error);
       return [];
     }
-    return (data as unknown as Application[]) || [];
+    return data || [];
   },
 
   async getUserApplications(userId: string): Promise<Application[]> {
@@ -203,7 +202,7 @@ export const applicationService = {
       console.error('Error fetching user applications:', error);
       return [];
     }
-    return (data as unknown as Application[]) || [];
+    return data || [];
   },
 
   async createApplication(applicationData: {
@@ -291,7 +290,7 @@ export const interviewService = {
       console.error('Error fetching interviews:', error);
       return [];
     }
-    return (data as unknown as Interview[]) || [];
+    return data || [];
   },
 
   async getInterviewsByApplication(applicationId: string): Promise<Interview[]> {
@@ -308,7 +307,7 @@ export const interviewService = {
       console.error('Error fetching interviews for application:', error);
       return [];
     }
-    return (data as unknown as Interview[]) || [];
+    return data || [];
   }
 };
 
@@ -328,7 +327,7 @@ export const chatService = {
       console.error('Error fetching chat transcripts:', error);
       return [];
     }
-    return (data as unknown as ChatTranscript[]) || [];
+    return data || [];
   },
 
   async addChatMessage(applicationId: string, message: string, isFromCandidate: boolean): Promise<ChatTranscript | null> {

@@ -851,6 +851,10 @@ export type Database = {
         Args: { user_id: string }
         Returns: Database["public"]["Enums"]["user_role"]
       }
+      increment_job_views: {
+        Args: { job_id: string }
+        Returns: undefined
+      }
       is_admin: {
         Args: { user_id: string }
         Returns: boolean
