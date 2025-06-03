@@ -5,7 +5,8 @@ import { Badge } from "@/components/ui/badge";
 import { Plus, Users, Briefcase, TrendingUp, Edit, Trash2, BarChart3, Star } from "lucide-react";
 import { Link } from "react-router-dom";
 import HRNav from "@/components/HRNav";
-import { useAllJobs, useApplicationStats, useRealtimeApplications } from "@/hooks/useSupabaseData";
+import { useAllJobs, useApplicationStats } from "@/hooks/useSupabaseData";
+import { useRealtimeManager } from "@/hooks/useRealtimeManager";
 import { useToast } from "@/hooks/use-toast";
 import { jobService } from "@/services/supabaseService";
 
@@ -13,7 +14,7 @@ const HRDashboard = () => {
   const { toast } = useToast();
   
   // Set up real-time updates
-  useRealtimeApplications();
+  useRealtimeManager();
   
   // Fetch real data from database (filtered by current user)
   const { data: jobs = [], isLoading: jobsLoading, refetch: refetchJobs } = useAllJobs();

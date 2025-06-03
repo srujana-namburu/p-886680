@@ -1,9 +1,9 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useNotifications } from "@/hooks/useSupabaseData";
+import { useRealtimeManager } from "@/hooks/useRealtimeManager";
 import { 
   Briefcase, 
   User, 
@@ -23,6 +23,9 @@ const JobSeekerNav = () => {
   const { unreadCount } = useNotifications();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isNotificationPanelOpen, setIsNotificationPanelOpen] = useState(false);
+  
+  // Initialize real-time subscriptions
+  useRealtimeManager();
   
   const userName = profile?.full_name || user?.email?.split('@')[0] || 'Job Seeker';
 

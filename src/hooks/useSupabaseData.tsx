@@ -6,8 +6,7 @@ import {
   applicationService, 
   interviewService,
   settingsService,
-  notificationService,
-  realtimeService
+  notificationService
 } from '@/services/supabaseService';
 import { useAuth } from './useAuth';
 import { ApplicationStatus } from '@/types/database';
@@ -93,11 +92,9 @@ export const useSystemSettings = () => {
   });
 };
 
-// Enhanced Notifications Hook with real-time updates
+// Simplified Notifications Hook (no real-time subscription here)
 export const useNotifications = () => {
   const { user } = useAuth();
-  const queryClient = useQueryClient();
-  const subscriptionRef = useRef<any>(null);
   
   const notificationsQuery = useQuery({
     queryKey: ['notifications', user?.id],
@@ -113,63 +110,8 @@ export const useNotifications = () => {
     staleTime: 30 * 1000, // 30 seconds
   });
 
-  // Set up real-time subscription for notifications only once
-  useEffect(() => {
-    if (!user || subscriptionRef.current) return;
-
-    console.log('Setting up notification subscription for user:', user.id);
-    
-    const subscription = realtimeService.subscribeToNotifications(user.id, (payload) => {
-      console.log('Notification update:', payload);
-      // Invalidate queries to refetch data
-      queryClient.invalidateQueries({ queryKey: ['notifications', user.id] });
-      queryClient.invalidateQueries({ queryKey: ['unread-notifications', user.id] });
-    });
-
-    subscriptionRef.current = subscription;
-
-    return () => {
-      console.log('Cleaning up notification subscription');
-      if (subscriptionRef.current) {
-        subscriptionRef.current.unsubscribe();
-        subscriptionRef.current = null;
-      }
-    };
-  }, [user?.id, queryClient]);
-
   return {
     notifications: notificationsQuery,
     unreadCount: unreadCountQuery,
   };
-};
-
-// Real-time Applications Hook
-export const useRealtimeApplications = () => {
-  const queryClient = useQueryClient();
-  const subscriptionRef = useRef<any>(null);
-
-  useEffect(() => {
-    if (subscriptionRef.current) return;
-
-    console.log('Setting up applications subscription');
-    
-    const subscription = realtimeService.subscribeToApplications((payload) => {
-      console.log('Application update:', payload);
-      // Invalidate related queries
-      queryClient.invalidateQueries({ queryKey: ['applications'] });
-      queryClient.invalidateQueries({ queryKey: ['application-stats'] });
-      queryClient.invalidateQueries({ queryKey: ['application'] });
-      queryClient.invalidateQueries({ queryKey: ['user-applications'] });
-    });
-
-    subscriptionRef.current = subscription;
-
-    return () => {
-      console.log('Cleaning up applications subscription');
-      if (subscriptionRef.current) {
-        subscriptionRef.current.unsubscribe();
-        subscriptionRef.current = null;
-      }
-    };
-  }, [queryClient]);
 };
