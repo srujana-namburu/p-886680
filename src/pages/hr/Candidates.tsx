@@ -4,22 +4,25 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Search, Filter, Mail, Phone, MapPin, Calendar, Download, Eye, Star, CheckCircle, Users } from "lucide-react";
 import { Link } from "react-router-dom";
 import HRNav from "@/components/HRNav";
 import { useApplications, useRealtimeApplications } from "@/hooks/useSupabaseData";
 import { applicationService } from "@/services/supabaseService";
+import { useToast } from "@/hooks/use-toast";
 import type { ApplicationStatus } from "@/types/database";
 
 const HRCandidates = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
+  const { toast } = useToast();
   
   // Set up real-time updates
   useRealtimeApplications();
   
   // Fetch applications from database
-  const { data: applications = [], isLoading, error } = useApplications();
+  const { data: applications = [], isLoading, error, refetch } = useApplications();
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -55,9 +58,18 @@ const HRCandidates = () => {
   const handleStatusUpdate = async (applicationId: string, newStatus: ApplicationStatus) => {
     try {
       await applicationService.updateApplicationStatus(applicationId, newStatus);
-      // The real-time subscription will automatically update the UI
+      toast({
+        title: "Success",
+        description: "Application status updated successfully.",
+      });
+      refetch(); // Refresh the data
     } catch (error) {
       console.error('Error updating application status:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update application status. Please try again.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -190,9 +202,26 @@ const HRCandidates = () => {
                   </div>
                   
                   <div className="flex flex-col items-end gap-3 min-w-fit">
-                    <Badge className={`${getStatusColor(application.status)} border px-3 py-1`}>
-                      {application.status.charAt(0).toUpperCase() + application.status.slice(1)}
-                    </Badge>
+                    <div className="flex flex-col gap-2 items-end">
+                      <Badge className={`${getStatusColor(application.status)} border px-3 py-1`}>
+                        {application.status.charAt(0).toUpperCase() + application.status.slice(1)}
+                      </Badge>
+                      <Select
+                        value={application.status}
+                        onValueChange={(value: ApplicationStatus) => handleStatusUpdate(application.id, value)}
+                      >
+                        <SelectTrigger className="w-40 bg-slate-700 border-slate-600 text-white">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="bg-slate-700 border-slate-600">
+                          <SelectItem value="pending">Pending</SelectItem>
+                          <SelectItem value="shortlisted">Shortlisted</SelectItem>
+                          <SelectItem value="interviewed">Interviewed</SelectItem>
+                          <SelectItem value="selected">Selected</SelectItem>
+                          <SelectItem value="rejected">Rejected</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
                     <div className="flex gap-2">
                       {application.resume_url && (
                         <Button size="sm" variant="outline" className="border-slate-600 text-slate-200 hover:bg-slate-700">

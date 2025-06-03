@@ -1,14 +1,14 @@
-
 import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ArrowLeft, Mail, Phone, Download, MessageSquare, MapPin, Calendar, Briefcase } from "lucide-react";
 import { Link, useParams } from "react-router-dom";
 import { applicationService, resumeService } from "@/services/supabaseService";
 import { useToast } from "@/hooks/use-toast";
 import HRNav from "@/components/HRNav";
-import type { Application } from "@/types/database";
+import type { Application, ApplicationStatus } from "@/types/database";
 
 const CandidateProfile = () => {
   const { id } = useParams();
@@ -35,6 +35,26 @@ const CandidateProfile = () => {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleStatusUpdate = async (newStatus: ApplicationStatus) => {
+    if (!application) return;
+
+    try {
+      await applicationService.updateApplicationStatus(application.id, newStatus);
+      setApplication(prev => prev ? { ...prev, status: newStatus } : null);
+      toast({
+        title: "Success",
+        description: "Application status updated successfully.",
+      });
+    } catch (error) {
+      console.error('Error updating application status:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update application status. Please try again.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -198,6 +218,26 @@ const CandidateProfile = () => {
                 <Badge className={`${getStatusColor(application.status)} border px-3 py-2 w-full justify-center`}>
                   {application.status === 'pending' ? 'Applied' : application.status.charAt(0).toUpperCase() + application.status.slice(1)}
                 </Badge>
+                
+                <div className="space-y-2">
+                  <label className="text-sm text-slate-300">Update Status:</label>
+                  <Select
+                    value={application.status}
+                    onValueChange={handleStatusUpdate}
+                  >
+                    <SelectTrigger className="bg-slate-700 border-slate-600 text-white">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="bg-slate-700 border-slate-600">
+                      <SelectItem value="pending">Pending</SelectItem>
+                      <SelectItem value="shortlisted">Shortlisted</SelectItem>
+                      <SelectItem value="interviewed">Interviewed</SelectItem>
+                      <SelectItem value="selected">Selected</SelectItem>
+                      <SelectItem value="rejected">Rejected</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
                 <div className="text-slate-300 text-sm space-y-2">
                   <p><strong>Applied for:</strong> {application.job?.title || 'Unknown Position'}</p>
                   <p><strong>Applied on:</strong> {new Date(application.applied_at).toLocaleDateString()}</p>

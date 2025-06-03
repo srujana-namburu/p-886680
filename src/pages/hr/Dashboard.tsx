@@ -2,7 +2,7 @@ import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Users, Briefcase, TrendingUp, Eye, Edit, Trash2, BarChart3, Clock, Star } from "lucide-react";
+import { Plus, Users, Briefcase, TrendingUp, Edit, Trash2, BarChart3, Star } from "lucide-react";
 import { Link } from "react-router-dom";
 import HRNav from "@/components/HRNav";
 import { useAllJobs, useApplicationStats, useRealtimeApplications } from "@/hooks/useSupabaseData";
@@ -15,7 +15,7 @@ const HRDashboard = () => {
   // Set up real-time updates
   useRealtimeApplications();
   
-  // Fetch real data from database
+  // Fetch real data from database (filtered by current user)
   const { data: jobs = [], isLoading: jobsLoading, refetch: refetchJobs } = useAllJobs();
   const { data: applicationStats = {}, isLoading: statsLoading } = useApplicationStats();
 
@@ -101,7 +101,7 @@ const HRDashboard = () => {
               <div className="text-3xl font-bold text-white mb-1">{activeJobsCount}</div>
               <p className="text-xs text-green-400 flex items-center">
                 <TrendingUp className="h-3 w-3 mr-1" />
-                Total jobs posted
+                Your posted jobs
               </p>
             </CardContent>
           </Card>
@@ -134,7 +134,7 @@ const HRDashboard = () => {
           <Card className="bg-slate-800/50 border-slate-700/50 backdrop-blur-sm hover:bg-slate-800/70 transition-all duration-300">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium text-slate-200">Selected</CardTitle>
-              <Clock className="h-5 w-5 text-purple-400" />
+              <Users className="h-5 w-5 text-purple-400" />
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold text-white mb-1">{applicationStats.selected || 0}</div>
@@ -190,10 +190,6 @@ const HRDashboard = () => {
                               <Users className="h-4 w-4" />
                               {job.applications_count || 0} applications
                             </span>
-                            <span className="flex items-center gap-1">
-                              <Eye className="h-4 w-4" />
-                              {job.views_count || 0} views
-                            </span>
                             <span>{job.salary_min && job.salary_max ? `$${job.salary_min} - $${job.salary_max}` : 'Salary not specified'}</span>
                           </div>
                         </div>
@@ -202,9 +198,6 @@ const HRDashboard = () => {
                             {job.status.charAt(0).toUpperCase() + job.status.slice(1)}
                           </Badge>
                           <div className="flex gap-1">
-                            <Button size="sm" variant="ghost" className="text-slate-400 hover:text-white">
-                              <Eye className="h-4 w-4" />
-                            </Button>
                             <Link to={`/hr/jobs/edit/${job.id}`}>
                               <Button size="sm" variant="ghost" className="text-slate-400 hover:text-blue-400">
                                 <Edit className="h-4 w-4" />

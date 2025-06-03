@@ -98,6 +98,23 @@ export const jobService = {
     return data || [];
   },
 
+  async getJobsByUser(userId: string): Promise<JobPosting[]> {
+    const { data, error } = await supabase
+      .from('job_postings')
+      .select(`
+        *,
+        job_skills(*)
+      `)
+      .eq('posted_by', userId)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching user jobs:', error);
+      return [];
+    }
+    return data || [];
+  },
+
   async getJobById(id: string): Promise<JobPosting | null> {
     const { data, error } = await supabase
       .from('job_postings')

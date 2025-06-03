@@ -22,9 +22,17 @@ export const useJobs = () => {
 };
 
 export const useAllJobs = () => {
+  const { user } = useAuth();
+  
   return useQuery({
-    queryKey: ['all-jobs'],
-    queryFn: jobService.getAllJobs,
+    queryKey: ['all-jobs', user?.id],
+    queryFn: () => {
+      if (user?.id) {
+        return jobService.getJobsByUser(user.id);
+      }
+      return jobService.getAllJobs();
+    },
+    enabled: !!user,
     staleTime: 5 * 60 * 1000,
   });
 };
@@ -85,7 +93,7 @@ export const useSystemSettings = () => {
   });
 };
 
-// Notifications Hook
+// Enhanced Notifications Hook with real-time updates
 export const useNotifications = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -104,7 +112,7 @@ export const useNotifications = () => {
     staleTime: 30 * 1000, // 30 seconds
   });
 
-  // Set up real-time subscription
+  // Set up real-time subscription for notifications
   useEffect(() => {
     if (!user) return;
 
@@ -137,6 +145,7 @@ export const useRealtimeApplications = () => {
       queryClient.invalidateQueries({ queryKey: ['applications'] });
       queryClient.invalidateQueries({ queryKey: ['application-stats'] });
       queryClient.invalidateQueries({ queryKey: ['application'] });
+      queryClient.invalidateQueries({ queryKey: ['user-applications'] });
     });
 
     return () => {
