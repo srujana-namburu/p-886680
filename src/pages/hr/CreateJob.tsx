@@ -41,15 +41,17 @@ const HRCreateJob = () => {
 
     try {
       const jobToCreate = {
-        title: jobData.title,
-        description: jobData.description,
-        requirements: jobData.requirements,
-        location: jobData.location,
+        title: jobData.title.trim(),
+        description: jobData.description.trim(),
+        requirements: jobData.requirements.trim(),
+        location: jobData.location.trim(),
         job_type: jobData.job_type,
         experience_level: jobData.experience_level,
         salary_min: jobData.salary_min ? parseInt(jobData.salary_min) : undefined,
         salary_max: jobData.salary_max ? parseInt(jobData.salary_max) : undefined,
       };
+
+      console.log('Creating job with data:', jobToCreate);
 
       const result = await jobService.createJob(jobToCreate);
 
@@ -79,7 +81,7 @@ const HRCreateJob = () => {
       <div className="container mx-auto px-4 py-8">
         <div className="flex items-center gap-4 mb-8">
           <Link to="/hr/dashboard">
-            <Button variant="outline" size="sm" className="border-slate-600 text-slate-200">
+            <Button variant="outline" size="sm" className="border-slate-600 text-slate-200 bg-slate-800 hover:bg-slate-700">
               <ArrowLeft className="w-4 h-4 mr-2" />
               Back
             </Button>
@@ -206,13 +208,13 @@ const HRCreateJob = () => {
           <div className="flex gap-4">
             <Button 
               type="submit" 
-              className="bg-blue-600 hover:bg-blue-700"
+              className="bg-blue-600 hover:bg-blue-700 text-white"
               disabled={isSubmitting}
             >
               <Save className="w-4 h-4 mr-2" />
               {isSubmitting ? 'Creating...' : 'Post Job'}
             </Button>
-            <Button type="button" variant="outline" className="border-slate-600 text-slate-200">
+            <Button type="button" variant="outline" className="border-slate-600 text-slate-200 bg-slate-800 hover:bg-slate-700">
               <Eye className="w-4 h-4 mr-2" />
               Preview
             </Button>

@@ -47,74 +47,73 @@ const HRNav = () => {
 
   return (
     <nav className="bg-slate-900/95 border-b border-slate-700/50 backdrop-blur-lg sticky top-0 z-50">
-      <div className="container mx-auto px-6">
+      <div className="container mx-auto px-4">
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
-          <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-500 rounded-xl flex items-center justify-center">
-              <Briefcase className="h-6 w-6 text-white" />
+          <div className="flex items-center space-x-3 flex-shrink-0">
+            <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-500 rounded-xl flex items-center justify-center">
+              <Briefcase className="h-5 w-5 text-white" />
             </div>
-            <span className="text-2xl font-bold text-white">TalentHub</span>
-            <span className="text-sm text-blue-400 bg-blue-500/10 px-2 py-1 rounded">HR</span>
+            <span className="text-xl font-bold text-white">TalentHub</span>
+            <span className="text-xs text-blue-400 bg-blue-500/10 px-2 py-1 rounded">HR</span>
           </div>
 
-          {/* Desktop Navigation */}
-          <div className="hidden lg:flex items-center space-x-1">
+          {/* Desktop Navigation - Compact */}
+          <div className="hidden lg:flex items-center space-x-1 flex-1 justify-center max-w-4xl overflow-x-auto">
             {navItems.map((item) => {
               const Icon = item.icon;
               return (
                 <Button
                   key={item.path}
                   variant="ghost"
-                  className={`flex items-center space-x-2 transition-all duration-300 ${
+                  size="sm"
+                  className={`flex items-center space-x-1 transition-all duration-300 text-xs whitespace-nowrap ${
                     isActiveRoute(item.path)
                       ? 'text-blue-300 bg-blue-500/10 border-b-2 border-blue-400'
                       : 'text-slate-300 hover:text-white hover:bg-white/10'
                   }`}
                   onClick={() => navigate(item.path)}
                 >
-                  <Icon className="h-4 w-4" />
-                  <span className="text-sm">{item.label}</span>
+                  <Icon className="h-3 w-3" />
+                  <span className="hidden xl:inline">{item.label}</span>
                 </Button>
               );
             })}
           </div>
 
-          {/* User Menu */}
-          <div className="hidden md:flex items-center space-x-4">
+          {/* User Menu - Compact */}
+          <div className="hidden md:flex items-center space-x-2 flex-shrink-0">
             <Button
               variant="ghost"
               size="sm"
-              className="text-slate-300 hover:text-white hover:bg-white/10 relative"
+              className="text-slate-300 hover:text-white hover:bg-white/10 relative p-2"
             >
-              <Bell className="h-5 w-5" />
-              <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full text-xs flex items-center justify-center text-white">
-                2
-              </span>
+              <Bell className="h-4 w-4" />
+              <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full"></span>
             </Button>
             
-            <div className="flex items-center space-x-3 px-3 py-2 bg-white/5 rounded-lg border border-white/10">
-              <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center">
-                <Users className="h-4 w-4 text-white" />
+            <div className="flex items-center space-x-2 px-2 py-1 bg-white/5 rounded-lg border border-white/10">
+              <div className="w-6 h-6 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center">
+                <Users className="h-3 w-3 text-white" />
               </div>
-              <span className="text-white font-medium">{userName}</span>
+              <span className="text-white font-medium text-sm max-w-24 truncate">{userName}</span>
             </div>
 
             <Button
               variant="ghost"
               size="sm"
-              className="text-slate-300 hover:text-white hover:bg-white/10"
+              className="text-slate-300 hover:text-white hover:bg-white/10 p-2"
             >
-              <Settings className="h-5 w-5" />
+              <Settings className="h-4 w-4" />
             </Button>
 
             <Button
               variant="ghost"
               size="sm"
-              className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
+              className="text-red-400 hover:text-red-300 hover:bg-red-500/10 p-2"
               onClick={handleLogout}
             >
-              <LogOut className="h-5 w-5" />
+              <LogOut className="h-4 w-4" />
             </Button>
           </div>
 
