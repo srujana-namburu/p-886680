@@ -168,7 +168,7 @@ export const applicationService = {
       .select(`
         *,
         job_postings(*),
-        profiles(*)
+        candidate:profiles!applications_candidate_id_fkey(*)
       `)
       .order('created_at', { ascending: false });
 
@@ -190,7 +190,7 @@ export const applicationService = {
     return (data || []).map(item => ({
       ...item,
       job: item.job_postings,
-      candidate: item.profiles
+      candidate: item.candidate
     })) as Application[];
   },
 
@@ -291,9 +291,9 @@ export const interviewService = {
         applications(
           *,
           job_postings(*),
-          profiles(*)
+          candidate:profiles!applications_candidate_id_fkey(*)
         ),
-        profiles!interviews_interviewer_id_fkey(*)
+        interviewer:profiles!interviews_interviewer_id_fkey(*)
       `)
       .order('scheduled_at', { ascending: true });
 
@@ -308,9 +308,9 @@ export const interviewService = {
       application: {
         ...item.applications,
         job: item.applications.job_postings,
-        candidate: item.applications.profiles
+        candidate: item.applications.candidate
       },
-      interviewer: item.profiles
+      interviewer: item.interviewer
     })) as Interview[];
   },
 
@@ -319,7 +319,7 @@ export const interviewService = {
       .from('interviews')
       .select(`
         *,
-        profiles!interviews_interviewer_id_fkey(*)
+        interviewer:profiles!interviews_interviewer_id_fkey(*)
       `)
       .eq('application_id', applicationId)
       .order('scheduled_at', { ascending: true });
@@ -332,7 +332,7 @@ export const interviewService = {
     // Transform the data to match our Interview interface
     return (data || []).map(item => ({
       ...item,
-      interviewer: item.profiles
+      interviewer: item.interviewer
     })) as Interview[];
   }
 };
@@ -344,7 +344,7 @@ export const chatService = {
       .from('chat_transcripts')
       .select(`
         *,
-        profiles!chat_transcripts_participant_id_fkey(*)
+        participant:profiles!chat_transcripts_participant_id_fkey(*)
       `)
       .eq('application_id', applicationId)
       .order('timestamp', { ascending: true });
@@ -357,7 +357,7 @@ export const chatService = {
     // Transform the data to match our ChatTranscript interface
     return (data || []).map(item => ({
       ...item,
-      participant: item.profiles
+      participant: item.participant
     })) as ChatTranscript[];
   },
 
