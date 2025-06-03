@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Download, FileText, Star, Users, Upload, X } from "lucide-react";
+import { Download, FileText, Star, Users, Upload, X, Loader } from "lucide-react";
 import { useAllJobs } from "@/hooks/useSupabaseData";
 import { applicationService, resumeService } from "@/services/supabaseService";
 import { useToast } from "@/hooks/use-toast";
@@ -17,6 +17,7 @@ const ResumeMatcherForm = () => {
   const [jobApplications, setJobApplications] = useState<Application[]>([]);
   const [uploadedResumes, setUploadedResumes] = useState<File[]>([]);
   const [loading, setLoading] = useState(false);
+  const [uploadingResumes, setUploadingResumes] = useState(false);
   const [jobDescription, setJobDescription] = useState('');
   const [requirements, setRequirements] = useState('');
   const [responsibilities, setResponsibilities] = useState('');
@@ -24,6 +25,23 @@ const ResumeMatcherForm = () => {
   const { toast } = useToast();
   
   const { data: jobs = [] } = useAllJobs();
+
+  const downloadResumeAsFile = async (application: Application): Promise<File | null> => {
+    if (!application.resume_url) return null;
+
+    try {
+      const response = await fetch(application.resume_url);
+      if (!response.ok) throw new Error('Failed to fetch resume');
+      
+      const blob = await response.blob();
+      const filename = application.resume_filename || `${application.candidate?.full_name || 'candidate'}_resume.pdf`;
+      
+      return new File([blob], filename, { type: blob.type });
+    } catch (error) {
+      console.error('Error downloading resume for auto-upload:', error);
+      return null;
+    }
+  };
 
   const handleJobSelect = async (jobId: string) => {
     const job = jobs.find(j => j.id === jobId);
@@ -33,10 +51,39 @@ const ResumeMatcherForm = () => {
       setRequirements(job.requirements);
       setResponsibilities(job.responsibilities || '');
       setLoading(true);
+      setUploadingResumes(true);
       
       try {
+        // Fetch applications with resumes for this job
         const applications = await applicationService.getJobApplicationsWithResumes(jobId);
         setJobApplications(applications);
+
+        // Auto-upload all resumes from these applications
+        if (applications.length > 0) {
+          const resumeFiles: File[] = [];
+          
+          for (const application of applications) {
+            if (application.resume_url) {
+              const file = await downloadResumeAsFile(application);
+              if (file) {
+                resumeFiles.push(file);
+              }
+            }
+          }
+          
+          if (resumeFiles.length > 0) {
+            setUploadedResumes(prev => [...prev, ...resumeFiles]);
+            toast({
+              title: "Success",
+              description: `Automatically uploaded ${resumeFiles.length} resumes from job applications.`,
+            });
+          } else {
+            toast({
+              title: "Info",
+              description: "No resumes found for this job position.",
+            });
+          }
+        }
       } catch (error) {
         console.error('Error fetching job applications:', error);
         toast({
@@ -46,6 +93,7 @@ const ResumeMatcherForm = () => {
         });
       } finally {
         setLoading(false);
+        setUploadingResumes(false);
       }
     }
   };
@@ -198,12 +246,21 @@ const ResumeMatcherForm = () => {
           {/* Resume Upload Section */}
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <label className="text-slate-200 text-sm font-medium">Upload Additional Resumes</label>
+              <label className="text-slate-200 text-sm font-medium">
+                Upload Additional Resumes
+                {uploadingResumes && (
+                  <span className="ml-2 text-blue-400 text-xs flex items-center gap-1">
+                    <Loader className="w-3 h-3 animate-spin" />
+                    Auto-uploading resumes...
+                  </span>
+                )}
+              </label>
               <Button
                 type="button"
                 variant="outline"
                 className="border-slate-600 text-slate-200 hover:bg-slate-700 bg-slate-800"
                 onClick={() => fileInputRef.current?.click()}
+                disabled={uploadingResumes}
               >
                 <Upload className="w-4 h-4 mr-2" />
                 Upload Resumes
@@ -222,10 +279,10 @@ const ResumeMatcherForm = () => {
             {uploadedResumes.length > 0 && (
               <div className="space-y-2">
                 <p className="text-slate-300 text-sm">Uploaded Resumes ({uploadedResumes.length}):</p>
-                <div className="grid gap-2">
+                <div className="grid gap-2 max-h-40 overflow-y-auto">
                   {uploadedResumes.map((file, index) => (
                     <div key={index} className="flex items-center justify-between p-2 bg-slate-700/30 rounded-lg border border-slate-600/50">
-                      <span className="text-slate-200 text-sm">{file.name}</span>
+                      <span className="text-slate-200 text-sm truncate">{file.name}</span>
                       <Button
                         size="sm"
                         variant="ghost"

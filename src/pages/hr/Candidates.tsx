@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -84,25 +85,17 @@ const HRCandidates = () => {
     }
 
     try {
-      // Fetch the file content from the URL
-      const response = await fetch(application.resume_url);
-      if (!response.ok) {
-        throw new Error('Failed to fetch resume');
-      }
-      
-      const blob = await response.blob();
-      
-      // Create download link
-      const url = window.URL.createObjectURL(blob);
+      // Create a link element and trigger download
       const link = document.createElement('a');
-      link.href = url;
-      link.download = application.resume_filename || `resume_${application.candidate?.full_name || 'candidate'}.pdf`;
+      link.href = application.resume_url;
+      link.download = application.resume_filename || `${application.candidate?.full_name || 'candidate'}_resume.pdf`;
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+      
+      // Append to body, click, and remove
       document.body.appendChild(link);
       link.click();
-      
-      // Cleanup
       document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
       
       toast({
         title: "Success",
@@ -281,7 +274,7 @@ const HRCandidates = () => {
                       </Select>
                     </div>
                     <div className="flex gap-2 flex-wrap">
-                      {application.resume_url && (
+                      {application.resume_url ? (
                         <>
                           <Button 
                             size="sm" 
@@ -302,6 +295,15 @@ const HRCandidates = () => {
                             Download
                           </Button>
                         </>
+                      ) : (
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          className="border-slate-600 text-slate-400 cursor-not-allowed bg-slate-800"
+                          disabled
+                        >
+                          No Resume
+                        </Button>
                       )}
                       <Link to={`/hr/candidates/${application.id}`}>
                         <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white">
