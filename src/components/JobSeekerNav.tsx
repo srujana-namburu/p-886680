@@ -84,10 +84,14 @@ const JobSeekerNav = () => {
               variant="ghost"
               size="sm"
               className="text-slate-300 hover:text-white hover:bg-white/10 relative"
+              onClick={() => {
+                // TODO: Add notification panel functionality
+                console.log('Notifications clicked');
+              }}
             >
               <Bell className="h-5 w-5" />
               {(unreadCount.data ?? 0) > 0 && (
-                <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full text-xs flex items-center justify-center text-white">
+                <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full text-xs flex items-center justify-center text-white font-bold">
                   {unreadCount.data}
                 </span>
               )}

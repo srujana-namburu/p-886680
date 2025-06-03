@@ -14,6 +14,9 @@ const ResumeMatcherForm = () => {
   const [selectedJob, setSelectedJob] = useState<JobPosting | null>(null);
   const [jobApplications, setJobApplications] = useState<Application[]>([]);
   const [loading, setLoading] = useState(false);
+  const [jobDescription, setJobDescription] = useState('');
+  const [requirements, setRequirements] = useState('');
+  const [responsibilities, setResponsibilities] = useState('');
   
   const { data: jobs = [] } = useAllJobs();
 
@@ -21,6 +24,9 @@ const ResumeMatcherForm = () => {
     const job = jobs.find(j => j.id === jobId);
     if (job) {
       setSelectedJob(job);
+      setJobDescription(job.description);
+      setRequirements(job.requirements);
+      setResponsibilities(job.responsibilities || '');
       setLoading(true);
       
       try {
@@ -51,6 +57,8 @@ const ResumeMatcherForm = () => {
     }
   };
 
+  const canAnalyze = jobDescription.trim() && requirements.trim() && responsibilities.trim();
+
   return (
     <div className="space-y-6">
       <Card className="bg-slate-800 border-slate-700">
@@ -58,12 +66,12 @@ const ResumeMatcherForm = () => {
           <CardTitle className="text-white">AI Resume Matcher</CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
-          {/* Job Selection */}
+          {/* Job Selection - Optional */}
           <div className="space-y-2">
-            <label className="text-slate-200 text-sm font-medium">Select Job Position</label>
+            <label className="text-slate-200 text-sm font-medium">Select Job Position (Optional)</label>
             <Select onValueChange={handleJobSelect}>
               <SelectTrigger className="bg-slate-700 border-slate-600 text-white">
-                <SelectValue placeholder="Choose a job position..." />
+                <SelectValue placeholder="Choose a job position to auto-fill fields..." />
               </SelectTrigger>
               <SelectContent className="bg-slate-700 border-slate-600">
                 {jobs.map((job) => (
@@ -75,47 +83,63 @@ const ResumeMatcherForm = () => {
             </Select>
           </div>
 
-          {/* Auto-filled Job Details */}
-          {selectedJob && (
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-              <div className="space-y-2">
-                <label className="text-slate-200 text-sm font-medium">Job Description</label>
-                <Textarea
-                  value={selectedJob.description}
-                  readOnly
-                  className="bg-slate-700 border-slate-600 text-slate-200 min-h-[120px]"
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <label className="text-slate-200 text-sm font-medium">Requirements</label>
-                <Textarea
-                  value={selectedJob.requirements}
-                  readOnly
-                  className="bg-slate-700 border-slate-600 text-slate-200 min-h-[120px]"
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <label className="text-slate-200 text-sm font-medium">Key Responsibilities</label>
-                <Textarea
-                  value={selectedJob.responsibilities || 'No responsibilities specified'}
-                  readOnly
-                  className="bg-slate-700 border-slate-600 text-slate-200 min-h-[120px]"
-                />
-              </div>
+          {/* Manual Job Details - All Required */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <div className="space-y-2">
+              <label className="text-slate-200 text-sm font-medium">
+                Job Description <span className="text-red-400">*</span>
+              </label>
+              <Textarea
+                value={jobDescription}
+                onChange={(e) => setJobDescription(e.target.value)}
+                placeholder="Enter job description..."
+                className="bg-slate-700 border-slate-600 text-slate-200 min-h-[120px]"
+                required
+              />
             </div>
-          )}
+            
+            <div className="space-y-2">
+              <label className="text-slate-200 text-sm font-medium">
+                Requirements <span className="text-red-400">*</span>
+              </label>
+              <Textarea
+                value={requirements}
+                onChange={(e) => setRequirements(e.target.value)}
+                placeholder="Enter job requirements..."
+                className="bg-slate-700 border-slate-600 text-slate-200 min-h-[120px]"
+                required
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <label className="text-slate-200 text-sm font-medium">
+                Key Responsibilities <span className="text-red-400">*</span>
+              </label>
+              <Textarea
+                value={responsibilities}
+                onChange={(e) => setResponsibilities(e.target.value)}
+                placeholder="Enter key responsibilities..."
+                className="bg-slate-700 border-slate-600 text-slate-200 min-h-[120px]"
+                required
+              />
+            </div>
+          </div>
 
           {/* AI Analysis Button */}
-          {selectedJob && jobApplications.length > 0 && (
-            <div className="text-center">
-              <Button className="bg-gradient-to-r from-purple-500 to-blue-600 hover:from-purple-600 hover:to-blue-700">
-                <Star className="w-4 h-4 mr-2" />
-                Analyze Resumes with AI
-              </Button>
-            </div>
-          )}
+          <div className="text-center">
+            <Button 
+              className="bg-gradient-to-r from-purple-500 to-blue-600 hover:from-purple-600 hover:to-blue-700 text-white"
+              disabled={!canAnalyze}
+            >
+              <Star className="w-4 h-4 mr-2" />
+              Analyze Resumes with AI
+            </Button>
+            {!canAnalyze && (
+              <p className="text-red-400 text-sm mt-2">
+                Please fill in all required fields to proceed with analysis.
+              </p>
+            )}
+          </div>
         </CardContent>
       </Card>
 
@@ -176,7 +200,7 @@ const ResumeMatcherForm = () => {
                         </Button>
                         <Button
                           size="sm"
-                          className="bg-blue-600 hover:bg-blue-700"
+                          className="bg-blue-600 hover:bg-blue-700 text-white"
                         >
                           <FileText className="h-4 w-4 mr-1" />
                           View

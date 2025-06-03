@@ -87,6 +87,10 @@ const HRNav = () => {
               variant="ghost"
               size="sm"
               className="text-slate-300 hover:text-white hover:bg-white/10 relative p-2"
+              onClick={() => {
+                // TODO: Add notification panel functionality
+                console.log('Notifications clicked');
+              }}
             >
               <Bell className="h-4 w-4" />
               <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full"></span>

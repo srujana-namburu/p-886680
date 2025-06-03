@@ -156,12 +156,6 @@ const HRCandidates = () => {
             <h1 className="text-4xl font-bold text-white mb-2">Candidates</h1>
             <p className="text-slate-400">Manage job applications and track candidate progress</p>
           </div>
-          <div className="flex gap-3">
-            <Button variant="outline" className="border-slate-600 text-slate-200 hover:bg-slate-700">
-              <Download className="w-4 h-4 mr-2" />
-              Export
-            </Button>
-          </div>
         </div>
 
         {/* Filters and Search */}
@@ -284,7 +278,7 @@ const HRCandidates = () => {
                             className="border-slate-600 text-slate-200 hover:bg-slate-700"
                             onClick={() => handleViewResume(application)}
                           >
-                            <FileText className="h-4 w-4 mr-1" />
+                            <Eye className="h-4 w-4 mr-1" />
                             View Resume
                           </Button>
                           <Button 
