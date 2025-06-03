@@ -10,6 +10,7 @@ import {
   realtimeService
 } from '@/services/supabaseService';
 import { useAuth } from './useAuth';
+import { ApplicationStatus } from '@/types/database';
 
 // Jobs Hook
 export const useJobs = () => {
@@ -29,7 +30,7 @@ export const useAllJobs = () => {
 };
 
 // Applications Hook
-export const useApplications = (filters?: { status?: string; jobId?: string }) => {
+export const useApplications = (filters?: { status?: ApplicationStatus; jobId?: string }) => {
   return useQuery({
     queryKey: ['applications', filters],
     queryFn: () => applicationService.getApplications(filters),

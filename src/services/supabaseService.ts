@@ -10,7 +10,8 @@ import type {
   Notification,
   SystemSetting,
   ApplicationStatus,
-  UserRole 
+  UserRole,
+  AIAnalysisType
 } from "@/types/database";
 
 // Profile Services
@@ -118,10 +119,7 @@ export const jobService = {
   },
 
   async incrementJobViews(jobId: string): Promise<void> {
-    const { error } = await supabase
-      .from('job_postings')
-      .update({ views_count: supabase.raw('views_count + 1') })
-      .eq('id', jobId);
+    const { error } = await supabase.rpc('increment_job_views', { job_id: jobId });
 
     if (error) {
       console.error('Error incrementing job views:', error);
@@ -154,7 +152,7 @@ export const applicationService = {
       console.error('Error fetching applications:', error);
       return [];
     }
-    return data || [];
+    return data as Application[] || [];
   },
 
   async getUserApplications(userId: string): Promise<Application[]> {
@@ -171,7 +169,7 @@ export const applicationService = {
       console.error('Error fetching user applications:', error);
       return [];
     }
-    return data || [];
+    return data as Application[] || [];
   },
 
   async updateApplicationStatus(id: string, status: ApplicationStatus, notes?: string): Promise<Application | null> {
@@ -232,7 +230,7 @@ export const interviewService = {
       console.error('Error fetching interviews:', error);
       return [];
     }
-    return data || [];
+    return data as Interview[] || [];
   },
 
   async getInterviewsByApplication(applicationId: string): Promise<Interview[]> {
@@ -249,7 +247,7 @@ export const interviewService = {
       console.error('Error fetching interviews for application:', error);
       return [];
     }
-    return data || [];
+    return data as Interview[] || [];
   }
 };
 
@@ -269,7 +267,7 @@ export const chatService = {
       console.error('Error fetching chat transcripts:', error);
       return [];
     }
-    return data || [];
+    return data as ChatTranscript[] || [];
   },
 
   async addChatMessage(applicationId: string, message: string, isFromCandidate: boolean): Promise<ChatTranscript | null> {
@@ -312,7 +310,7 @@ export const aiService = {
     return data;
   },
 
-  async getAnalysisResults(type?: string, jobId?: string): Promise<AIAnalysisResult[]> {
+  async getAnalysisResults(type?: AIAnalysisType, jobId?: string): Promise<AIAnalysisResult[]> {
     let query = supabase
       .from('ai_analysis_results')
       .select('*')
