@@ -5,6 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
+import ProtectedRoute from "@/components/ProtectedRoute";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
@@ -51,18 +52,107 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
-            <Route path="/hr/dashboard" element={<HRDashboard />} />
-            <Route path="/hr/candidates" element={<HRCandidates />} />
-            <Route path="/hr/jobs/create" element={<HRCreateJob />} />
-            <Route path="/hr/jobs/edit/:id" element={<HREditJob />} />
-            <Route path="/hr/candidates/:id" element={<CandidateProfile />} />
-            <Route path="/hr/resume-matcher" element={<ResumeMatcherAI />} />
-            <Route path="/hr/interview-summary" element={<InterviewSummary />} />
-            <Route path="/hr/chat-summarizer" element={<ChatSummarizer />} />
-            <Route path="/hr/bias-detector" element={<BiasDetector />} />
-            <Route path="/jobseeker/dashboard" element={<JobSeekerDashboard />} />
-            <Route path="/jobseeker/applications" element={<JobSeekerApplications />} />
-            <Route path="/jobseeker/profile" element={<JobSeekerProfile />} />
+            
+            {/* HR Protected Routes */}
+            <Route 
+              path="/hr/dashboard" 
+              element={
+                <ProtectedRoute requiredRole="hr_manager">
+                  <HRDashboard />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/hr/candidates" 
+              element={
+                <ProtectedRoute requiredRole="hr_manager">
+                  <HRCandidates />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/hr/jobs/create" 
+              element={
+                <ProtectedRoute requiredRole="hr_manager">
+                  <HRCreateJob />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/hr/jobs/edit/:id" 
+              element={
+                <ProtectedRoute requiredRole="hr_manager">
+                  <HREditJob />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/hr/candidates/:id" 
+              element={
+                <ProtectedRoute requiredRole="hr_manager">
+                  <CandidateProfile />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/hr/resume-matcher" 
+              element={
+                <ProtectedRoute requiredRole="hr_manager">
+                  <ResumeMatcherAI />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/hr/interview-summary" 
+              element={
+                <ProtectedRoute requiredRole="hr_manager">
+                  <InterviewSummary />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/hr/chat-summarizer" 
+              element={
+                <ProtectedRoute requiredRole="hr_manager">
+                  <ChatSummarizer />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/hr/bias-detector" 
+              element={
+                <ProtectedRoute requiredRole="hr_manager">
+                  <BiasDetector />
+                </ProtectedRoute>
+              } 
+            />
+            
+            {/* Job Seeker Protected Routes */}
+            <Route 
+              path="/jobseeker/dashboard" 
+              element={
+                <ProtectedRoute requiredRole="jobseeker">
+                  <JobSeekerDashboard />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/jobseeker/applications" 
+              element={
+                <ProtectedRoute requiredRole="jobseeker">
+                  <JobSeekerApplications />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/jobseeker/profile" 
+              element={
+                <ProtectedRoute requiredRole="jobseeker">
+                  <JobSeekerProfile />
+                </ProtectedRoute>
+              } 
+            />
+            
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

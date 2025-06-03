@@ -2,6 +2,8 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useNavigate, useLocation } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
+import { useNotifications } from "@/hooks/useSupabaseData";
 import { 
   Briefcase, 
   User, 
@@ -16,9 +18,11 @@ import {
 const JobSeekerNav = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { user, profile, signOut } = useAuth();
+  const { unreadCount } = useNotifications();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   
-  const userName = localStorage.getItem('userName') || 'Job Seeker';
+  const userName = profile?.full_name || user?.email?.split('@')[0] || 'Job Seeker';
 
   const navItems = [
     { path: '/jobseeker/dashboard', label: 'Dashboard', icon: Briefcase },
@@ -26,11 +30,8 @@ const JobSeekerNav = () => {
     { path: '/jobseeker/profile', label: 'Profile', icon: User },
   ];
 
-  const handleLogout = () => {
-    localStorage.removeItem('isAuthenticated');
-    localStorage.removeItem('userType');
-    localStorage.removeItem('userEmail');
-    localStorage.removeItem('userName');
+  const handleLogout = async () => {
+    await signOut();
     navigate('/');
   };
 
@@ -78,9 +79,11 @@ const JobSeekerNav = () => {
               className="text-slate-300 hover:text-white hover:bg-white/10 relative"
             >
               <Bell className="h-5 w-5" />
-              <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full text-xs flex items-center justify-center text-white">
-                3
-              </span>
+              {(unreadCount.data ?? 0) > 0 && (
+                <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full text-xs flex items-center justify-center text-white">
+                  {unreadCount.data}
+                </span>
+              )}
             </Button>
             
             <div className="flex items-center space-x-3 px-3 py-2 bg-white/5 rounded-lg border border-white/10">
