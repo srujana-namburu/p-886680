@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { 
   jobService, 
@@ -97,7 +97,7 @@ export const useSystemSettings = () => {
 export const useNotifications = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const [subscriptionSetup, setSubscriptionSetup] = useState(false);
+  const subscriptionRef = useRef<any>(null);
   
   const notificationsQuery = useQuery({
     queryKey: ['notifications', user?.id],
@@ -115,7 +115,7 @@ export const useNotifications = () => {
 
   // Set up real-time subscription for notifications only once
   useEffect(() => {
-    if (!user || subscriptionSetup) return;
+    if (!user || subscriptionRef.current) return;
 
     console.log('Setting up notification subscription for user:', user.id);
     
@@ -126,14 +126,16 @@ export const useNotifications = () => {
       queryClient.invalidateQueries({ queryKey: ['unread-notifications', user.id] });
     });
 
-    setSubscriptionSetup(true);
+    subscriptionRef.current = subscription;
 
     return () => {
       console.log('Cleaning up notification subscription');
-      subscription.unsubscribe();
-      setSubscriptionSetup(false);
+      if (subscriptionRef.current) {
+        subscriptionRef.current.unsubscribe();
+        subscriptionRef.current = null;
+      }
     };
-  }, [user?.id, queryClient, subscriptionSetup]);
+  }, [user?.id, queryClient]);
 
   return {
     notifications: notificationsQuery,
@@ -144,10 +146,10 @@ export const useNotifications = () => {
 // Real-time Applications Hook
 export const useRealtimeApplications = () => {
   const queryClient = useQueryClient();
-  const [subscriptionSetup, setSubscriptionSetup] = useState(false);
+  const subscriptionRef = useRef<any>(null);
 
   useEffect(() => {
-    if (subscriptionSetup) return;
+    if (subscriptionRef.current) return;
 
     console.log('Setting up applications subscription');
     
@@ -160,12 +162,14 @@ export const useRealtimeApplications = () => {
       queryClient.invalidateQueries({ queryKey: ['user-applications'] });
     });
 
-    setSubscriptionSetup(true);
+    subscriptionRef.current = subscription;
 
     return () => {
       console.log('Cleaning up applications subscription');
-      subscription.unsubscribe();
-      setSubscriptionSetup(false);
+      if (subscriptionRef.current) {
+        subscriptionRef.current.unsubscribe();
+        subscriptionRef.current = null;
+      }
     };
-  }, [queryClient, subscriptionSetup]);
+  }, [queryClient]);
 };
