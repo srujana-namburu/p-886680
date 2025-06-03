@@ -167,8 +167,8 @@ export const applicationService = {
       .from('applications')
       .select(`
         *,
-        job:job_postings(*),
-        candidate:profiles(*)
+        job_postings!inner(*),
+        profiles!inner(*)
       `)
       .order('created_at', { ascending: false });
 
@@ -185,7 +185,13 @@ export const applicationService = {
       console.error('Error fetching applications:', error);
       return [];
     }
-    return data || [];
+
+    // Transform the data to match our Application interface
+    return (data || []).map(item => ({
+      ...item,
+      job: item.job_postings,
+      candidate: item.profiles
+    })) as Application[];
   },
 
   async getUserApplications(userId: string): Promise<Application[]> {
@@ -193,7 +199,7 @@ export const applicationService = {
       .from('applications')
       .select(`
         *,
-        job:job_postings(*)
+        job_postings!inner(*)
       `)
       .eq('candidate_id', userId)
       .order('created_at', { ascending: false });
@@ -202,7 +208,12 @@ export const applicationService = {
       console.error('Error fetching user applications:', error);
       return [];
     }
-    return data || [];
+
+    // Transform the data to match our Application interface
+    return (data || []).map(item => ({
+      ...item,
+      job: item.job_postings
+    })) as Application[];
   },
 
   async createApplication(applicationData: {
@@ -277,12 +288,12 @@ export const interviewService = {
       .from('interviews')
       .select(`
         *,
-        application:applications(
+        applications!inner(
           *,
-          job:job_postings(*),
-          candidate:profiles(*)
+          job_postings!inner(*),
+          profiles!inner(*)
         ),
-        interviewer:profiles(*)
+        profiles!interviews_interviewer_id_fkey(*)
       `)
       .order('scheduled_at', { ascending: true });
 
@@ -290,7 +301,17 @@ export const interviewService = {
       console.error('Error fetching interviews:', error);
       return [];
     }
-    return data || [];
+
+    // Transform the data to match our Interview interface
+    return (data || []).map(item => ({
+      ...item,
+      application: {
+        ...item.applications,
+        job: item.applications.job_postings,
+        candidate: item.applications.profiles
+      },
+      interviewer: item.profiles
+    })) as Interview[];
   },
 
   async getInterviewsByApplication(applicationId: string): Promise<Interview[]> {
@@ -298,7 +319,7 @@ export const interviewService = {
       .from('interviews')
       .select(`
         *,
-        interviewer:profiles(*)
+        profiles!interviews_interviewer_id_fkey(*)
       `)
       .eq('application_id', applicationId)
       .order('scheduled_at', { ascending: true });
@@ -307,7 +328,12 @@ export const interviewService = {
       console.error('Error fetching interviews for application:', error);
       return [];
     }
-    return data || [];
+
+    // Transform the data to match our Interview interface
+    return (data || []).map(item => ({
+      ...item,
+      interviewer: item.profiles
+    })) as Interview[];
   }
 };
 
@@ -318,7 +344,7 @@ export const chatService = {
       .from('chat_transcripts')
       .select(`
         *,
-        participant:profiles(*)
+        profiles!chat_transcripts_participant_id_fkey(*)
       `)
       .eq('application_id', applicationId)
       .order('timestamp', { ascending: true });
@@ -327,7 +353,12 @@ export const chatService = {
       console.error('Error fetching chat transcripts:', error);
       return [];
     }
-    return data || [];
+
+    // Transform the data to match our ChatTranscript interface
+    return (data || []).map(item => ({
+      ...item,
+      participant: item.profiles
+    })) as ChatTranscript[];
   },
 
   async addChatMessage(applicationId: string, message: string, isFromCandidate: boolean): Promise<ChatTranscript | null> {
