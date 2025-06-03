@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import type { 
   Profile, 
@@ -12,7 +11,8 @@ import type {
   ApplicationStatus,
   UserRole,
   AIAnalysisType,
-  JobStatus
+  JobStatus,
+  NotificationType
 } from "@/types/database";
 
 // Profile Services
@@ -705,7 +705,7 @@ export const notificationService = {
     user_id: string;
     title: string;
     message: string;
-    type: string;
+    type: NotificationType;
     related_application_id?: string;
     related_job_id?: string;
     action_url?: string;

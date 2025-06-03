@@ -15,7 +15,7 @@ interface NotificationPanelProps {
 }
 
 const NotificationPanel = ({ userType, isOpen, onClose }: NotificationPanelProps) => {
-  const { data: notifications = [], refetch } = useNotifications();
+  const { notifications, unreadCount } = useNotifications();
   const { toast } = useToast();
   const [markingAsRead, setMarkingAsRead] = useState<string | null>(null);
 
@@ -23,7 +23,7 @@ const NotificationPanel = ({ userType, isOpen, onClose }: NotificationPanelProps
     setMarkingAsRead(notificationId);
     try {
       await notificationService.markAsRead(notificationId);
-      await refetch();
+      await notifications.refetch();
       toast({
         title: "Success",
         description: "Notification marked as read.",
@@ -71,6 +71,8 @@ const NotificationPanel = ({ userType, isOpen, onClose }: NotificationPanelProps
 
   if (!isOpen) return null;
 
+  const notificationData = notifications.data || [];
+
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-start justify-end pt-16 pr-4">
       <Card className="w-96 max-h-[80vh] bg-slate-800/95 border-slate-700 shadow-2xl">
@@ -89,7 +91,7 @@ const NotificationPanel = ({ userType, isOpen, onClose }: NotificationPanelProps
           </Button>
         </CardHeader>
         <CardContent className="space-y-4 max-h-[60vh] overflow-y-auto">
-          {notifications.length === 0 ? (
+          {notificationData.length === 0 ? (
             <div className="text-center py-8">
               <Bell className="h-12 w-12 text-slate-600 mx-auto mb-4" />
               <p className="text-slate-400">No notifications yet</p>
@@ -101,7 +103,7 @@ const NotificationPanel = ({ userType, isOpen, onClose }: NotificationPanelProps
               </p>
             </div>
           ) : (
-            notifications.map((notification) => (
+            notificationData.map((notification) => (
               <div
                 key={notification.id}
                 className={`p-4 rounded-lg border transition-all duration-200 ${
