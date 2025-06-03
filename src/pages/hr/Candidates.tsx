@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,7 +7,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Search, Filter, Mail, Phone, MapPin, Calendar, Download, Eye, Star, CheckCircle, Users } from "lucide-react";
 import { Link } from "react-router-dom";
 import HRNav from "@/components/HRNav";
-import { useApplications, useRealtimeApplications } from "@/hooks/useSupabaseData";
+import { useApplications } from "@/hooks/useSupabaseData";
+import { useRealtimeManager } from "@/hooks/useRealtimeManager";
 import { applicationService } from "@/services/supabaseService";
 import { useToast } from "@/hooks/use-toast";
 import type { ApplicationStatus } from "@/types/database";
@@ -19,7 +19,7 @@ const HRCandidates = () => {
   const { toast } = useToast();
   
   // Set up real-time updates
-  useRealtimeApplications();
+  useRealtimeManager();
   
   // Fetch applications from database - RLS will automatically filter by HR's jobs
   const { data: applications = [], isLoading, error, refetch } = useApplications();
