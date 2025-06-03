@@ -1,99 +1,91 @@
 
 import React, { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Search, Filter, Mail, Phone, MapPin, Calendar, Download, Eye, Star, CheckCircle, Users } from "lucide-react";
 import { Link } from "react-router-dom";
 import HRNav from "@/components/HRNav";
+import { useApplications, useRealtimeApplications } from "@/hooks/useSupabaseData";
+import { applicationService } from "@/services/supabaseService";
+import type { ApplicationStatus } from "@/types/database";
 
 const HRCandidates = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   
-  const candidates = [
-    {
-      id: 1,
-      name: "Alice Johnson",
-      email: "alice.johnson@email.com",
-      phone: "+1 (555) 123-4567",
-      location: "San Francisco, CA",
-      appliedFor: "Senior React Developer",
-      status: "Shortlisted",
-      appliedDate: "2024-01-15",
-      experience: "5 years",
-      rating: 4.5,
-      resumeUrl: "/resumes/alice-johnson.pdf"
-    },
-    {
-      id: 2,
-      name: "Bob Smith",
-      email: "bob.smith@email.com",
-      phone: "+1 (555) 987-6543",
-      location: "Remote",
-      appliedFor: "UX Designer",
-      status: "Pending",
-      appliedDate: "2024-01-14",
-      experience: "3 years",
-      rating: 4.2,
-      resumeUrl: "/resumes/bob-smith.pdf"
-    },
-    {
-      id: 3,
-      name: "Carol Davis",
-      email: "carol.davis@email.com",
-      phone: "+1 (555) 456-7890",
-      location: "New York, NY",
-      appliedFor: "Product Manager",
-      status: "Interviewed",
-      appliedDate: "2024-01-12",
-      experience: "7 years",
-      rating: 4.8,
-      resumeUrl: "/resumes/carol-davis.pdf"
-    },
-    {
-      id: 4,
-      name: "David Wilson",
-      email: "david.wilson@email.com",
-      phone: "+1 (555) 321-0987",
-      location: "Austin, TX",
-      appliedFor: "Senior React Developer",
-      status: "Rejected",
-      appliedDate: "2024-01-10",
-      experience: "4 years",
-      rating: 3.5,
-      resumeUrl: "/resumes/david-wilson.pdf"
-    }
-  ];
+  // Set up real-time updates
+  useRealtimeApplications();
+  
+  // Fetch applications from database
+  const { data: applications = [], isLoading, error } = useApplications();
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'Pending': return 'bg-yellow-500/20 text-yellow-300 border-yellow-500/30';
-      case 'Shortlisted': return 'bg-blue-500/20 text-blue-300 border-blue-500/30';
-      case 'Interviewed': return 'bg-purple-500/20 text-purple-300 border-purple-500/30';
-      case 'Selected': return 'bg-green-500/20 text-green-300 border-green-500/30';
-      case 'Rejected': return 'bg-red-500/20 text-red-300 border-red-500/30';
+      case 'pending': return 'bg-yellow-500/20 text-yellow-300 border-yellow-500/30';
+      case 'shortlisted': return 'bg-blue-500/20 text-blue-300 border-blue-500/30';
+      case 'interviewed': return 'bg-purple-500/20 text-purple-300 border-purple-500/30';
+      case 'selected': return 'bg-green-500/20 text-green-300 border-green-500/30';
+      case 'rejected': return 'bg-red-500/20 text-red-300 border-red-500/30';
       default: return 'bg-gray-500/20 text-gray-300 border-gray-500/30';
     }
   };
 
-  const filteredCandidates = candidates.filter(candidate => {
-    const matchesSearch = candidate.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         candidate.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         candidate.appliedFor.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === 'All' || candidate.status === statusFilter;
+  const filteredApplications = applications.filter(application => {
+    const candidate = application.candidate;
+    const job = application.job;
+    
+    const matchesSearch = candidate?.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         candidate?.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         job?.title.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus = statusFilter === 'All' || application.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
 
   const statusCounts = {
-    All: candidates.length,
-    Pending: candidates.filter(c => c.status === 'Pending').length,
-    Shortlisted: candidates.filter(c => c.status === 'Shortlisted').length,
-    Interviewed: candidates.filter(c => c.status === 'Interviewed').length,
-    Selected: candidates.filter(c => c.status === 'Selected').length,
-    Rejected: candidates.filter(c => c.status === 'Rejected').length,
+    All: applications.length,
+    pending: applications.filter(a => a.status === 'pending').length,
+    shortlisted: applications.filter(a => a.status === 'shortlisted').length,
+    interviewed: applications.filter(a => a.status === 'interviewed').length,
+    selected: applications.filter(a => a.status === 'selected').length,
+    rejected: applications.filter(a => a.status === 'rejected').length,
   };
+
+  const handleStatusUpdate = async (applicationId: string, newStatus: ApplicationStatus) => {
+    try {
+      await applicationService.updateApplicationStatus(applicationId, newStatus);
+      // The real-time subscription will automatically update the UI
+    } catch (error) {
+      console.error('Error updating application status:', error);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-slate-900">
+        <HRNav />
+        <div className="container mx-auto px-6 py-8">
+          <div className="flex justify-center items-center h-64">
+            <div className="text-white text-lg">Loading candidates...</div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-slate-900">
+        <HRNav />
+        <div className="container mx-auto px-6 py-8">
+          <div className="flex justify-center items-center h-64">
+            <div className="text-red-400 text-lg">Error loading candidates. Please try again.</div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-900">
@@ -143,17 +135,17 @@ const HRCandidates = () => {
                 }`}
                 onClick={() => setStatusFilter(status)}
               >
-                {status} ({count})
+                {status.charAt(0).toUpperCase() + status.slice(1)} ({count})
               </Button>
             ))}
           </div>
         </div>
 
-        {/* Candidates Grid */}
+        {/* Applications Grid */}
         <div className="grid gap-6">
-          {filteredCandidates.map((candidate, index) => (
+          {filteredApplications.map((application, index) => (
             <Card 
-              key={candidate.id} 
+              key={application.id} 
               className="bg-slate-800/50 border-slate-700/50 backdrop-blur-sm hover:bg-slate-800/70 transition-all duration-300 transform hover:scale-[1.01]"
               style={{ animationDelay: `${index * 100}ms` }}
             >
@@ -163,50 +155,52 @@ const HRCandidates = () => {
                     <div className="flex items-start justify-between">
                       <div>
                         <h3 className="text-xl font-semibold text-white mb-2 flex items-center gap-2">
-                          {candidate.name}
+                          {application.candidate?.full_name || 'Unknown Candidate'}
                           <div className="flex items-center gap-1">
                             <Star className="h-4 w-4 text-yellow-400 fill-current" />
-                            <span className="text-sm text-slate-300">{candidate.rating}</span>
+                            <span className="text-sm text-slate-300">{application.rating || 'N/A'}</span>
                           </div>
                         </h3>
-                        <p className="text-lg text-blue-400 font-medium">{candidate.appliedFor}</p>
+                        <p className="text-lg text-blue-400 font-medium">{application.job?.title || 'Unknown Position'}</p>
                       </div>
                     </div>
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                       <div className="flex items-center gap-2 text-slate-300">
                         <Mail className="h-4 w-4 text-slate-400" />
-                        <span className="text-sm">{candidate.email}</span>
+                        <span className="text-sm">{application.candidate?.email || 'No email'}</span>
                       </div>
                       <div className="flex items-center gap-2 text-slate-300">
                         <Phone className="h-4 w-4 text-slate-400" />
-                        <span className="text-sm">{candidate.phone}</span>
+                        <span className="text-sm">{application.candidate?.phone || 'No phone'}</span>
                       </div>
                       <div className="flex items-center gap-2 text-slate-300">
                         <MapPin className="h-4 w-4 text-slate-400" />
-                        <span className="text-sm">{candidate.location}</span>
+                        <span className="text-sm">{application.candidate?.location || 'No location'}</span>
                       </div>
                       <div className="flex items-center gap-2 text-slate-300">
                         <Calendar className="h-4 w-4 text-slate-400" />
-                        <span className="text-sm">Applied: {candidate.appliedDate}</span>
+                        <span className="text-sm">Applied: {new Date(application.applied_at).toLocaleDateString()}</span>
                       </div>
                       <div className="flex items-center gap-2 text-slate-300">
                         <CheckCircle className="h-4 w-4 text-slate-400" />
-                        <span className="text-sm">Experience: {candidate.experience}</span>
+                        <span className="text-sm">Source: {application.application_source || 'Website'}</span>
                       </div>
                     </div>
                   </div>
                   
                   <div className="flex flex-col items-end gap-3 min-w-fit">
-                    <Badge className={`${getStatusColor(candidate.status)} border px-3 py-1`}>
-                      {candidate.status}
+                    <Badge className={`${getStatusColor(application.status)} border px-3 py-1`}>
+                      {application.status.charAt(0).toUpperCase() + application.status.slice(1)}
                     </Badge>
                     <div className="flex gap-2">
-                      <Button size="sm" variant="outline" className="border-slate-600 text-slate-200 hover:bg-slate-700">
-                        <Download className="h-4 w-4 mr-1" />
-                        Resume
-                      </Button>
-                      <Link to={`/hr/candidates/${candidate.id}`}>
+                      {application.resume_url && (
+                        <Button size="sm" variant="outline" className="border-slate-600 text-slate-200 hover:bg-slate-700">
+                          <Download className="h-4 w-4 mr-1" />
+                          Resume
+                        </Button>
+                      )}
+                      <Link to={`/hr/candidates/${application.id}`}>
                         <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white">
                           <Eye className="h-4 w-4 mr-1" />
                           View Profile
@@ -220,7 +214,7 @@ const HRCandidates = () => {
           ))}
         </div>
 
-        {filteredCandidates.length === 0 && (
+        {filteredApplications.length === 0 && (
           <div className="text-center py-12">
             <Users className="h-16 w-16 text-slate-600 mx-auto mb-4" />
             <h3 className="text-xl font-medium text-slate-400 mb-2">No candidates found</h3>
