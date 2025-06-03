@@ -592,13 +592,6 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "job_postings_company_id_fkey"
-            columns: ["company_id"]
-            isOneToOne: false
-            referencedRelation: "companies"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "job_postings_posted_by_fkey"
             columns: ["posted_by"]
             isOneToOne: false

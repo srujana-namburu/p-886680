@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import type { 
   Profile, 
@@ -69,7 +70,6 @@ export const jobService = {
       .from('job_postings')
       .select(`
         *,
-        company:companies(*),
         job_skills(*)
       `)
       .eq('status', 'active')
@@ -87,7 +87,6 @@ export const jobService = {
       .from('job_postings')
       .select(`
         *,
-        company:companies(*),
         job_skills(*)
       `)
       .order('created_at', { ascending: false });
@@ -104,7 +103,6 @@ export const jobService = {
       .from('job_postings')
       .select(`
         *,
-        company:companies(*),
         job_skills(*)
       `)
       .eq('id', id)
@@ -171,6 +169,40 @@ export const jobService = {
     if (error) {
       console.error('Error creating job:', error);
       console.error('Error details:', error.message);
+      return null;
+    }
+    return data;
+  },
+
+  async updateJob(jobId: string, jobData: {
+    title?: string;
+    description?: string;
+    requirements?: string;
+    responsibilities?: string;
+    location?: string;
+    job_type?: string;
+    experience_level?: string;
+    salary_min?: number | null;
+    salary_max?: number | null;
+    currency?: string;
+    department?: string | null;
+    company_id?: string | null;
+    expires_at?: string | null;
+    is_featured?: boolean;
+    status?: string;
+  }): Promise<JobPosting | null> {
+    const { data, error } = await supabase
+      .from('job_postings')
+      .update({
+        ...jobData,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', jobId)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error updating job:', error);
       return null;
     }
     return data;

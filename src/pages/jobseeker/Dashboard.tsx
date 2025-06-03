@@ -48,8 +48,8 @@ const JobSeekerDashboard = () => {
   });
 
   // Fetch real data from database
-  const { data: jobs = [], isLoading: jobsLoading, error: jobsError } = useJobs();
-  const { data: userApplications = [] } = useUserApplications();
+  const { data: jobs = [], isLoading: jobsLoading, error: jobsError, refetch: refetchJobs } = useJobs();
+  const { data: userApplications = [], refetch: refetchApplications } = useUserApplications();
 
   const toggleJobExpansion = (jobId: string) => {
     const newExpanded = new Set(expandedJobs);
@@ -57,6 +57,8 @@ const JobSeekerDashboard = () => {
       newExpanded.delete(jobId);
     } else {
       newExpanded.add(jobId);
+      // Increment view count when job is viewed
+      jobService.incrementJobViews(jobId);
     }
     setExpandedJobs(newExpanded);
   };
@@ -135,6 +137,8 @@ const JobSeekerDashboard = () => {
         setCoverLetter("");
         setSelectedFile(null);
         setCurrentJob(null);
+        // Refetch user applications to update the UI
+        refetchApplications();
       } else {
         throw new Error('Failed to submit application');
       }
@@ -152,7 +156,8 @@ const JobSeekerDashboard = () => {
 
   const filteredJobs = jobs.filter(job => {
     const matchesSearch = job.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         job.location.toLowerCase().includes(searchTerm.toLowerCase());
+                         job.location.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         (job.company_id && job.company_id.toLowerCase().includes(searchTerm.toLowerCase()));
     
     const matchesType = !filters.jobType || job.job_type === filters.jobType;
     const matchesExperience = !filters.experience || job.experience_level === filters.experience;
@@ -336,11 +341,16 @@ const JobSeekerDashboard = () => {
                             Applied
                           </Badge>
                         )}
+                        {job.is_featured && (
+                          <Badge className="bg-yellow-500/20 text-yellow-300 border-yellow-500/30">
+                            Featured
+                          </Badge>
+                        )}
                       </div>
                       <div className="flex items-center gap-4 text-slate-300 mb-3">
                         <div className="flex items-center gap-1">
                           <Building className="h-4 w-4" />
-                          <span>{job.company?.name || 'Company'}</span>
+                          <span>{job.company_id || 'Company'}</span>
                         </div>
                         <div className="flex items-center gap-1">
                           <MapPin className="h-4 w-4" />
@@ -361,7 +371,9 @@ const JobSeekerDashboard = () => {
                         {job.salary_min && job.salary_max && (
                           <div className="flex items-center gap-1 text-green-400">
                             <DollarSign className="h-4 w-4" />
-                            <span className="font-semibold">${job.salary_min.toLocaleString()} - ${job.salary_max.toLocaleString()}</span>
+                            <span className="font-semibold">
+                              {job.currency} {job.salary_min.toLocaleString()} - {job.salary_max.toLocaleString()}
+                            </span>
                           </div>
                         )}
                       </div>
@@ -388,10 +400,24 @@ const JobSeekerDashboard = () => {
                         <p className="text-slate-300 leading-relaxed">{job.description}</p>
                       </div>
                       
+                      {job.responsibilities && (
+                        <div>
+                          <h4 className="text-lg font-semibold text-white mb-3">Key Responsibilities</h4>
+                          <p className="text-slate-300 leading-relaxed">{job.responsibilities}</p>
+                        </div>
+                      )}
+                      
                       <div>
                         <h4 className="text-lg font-semibold text-white mb-3">Requirements</h4>
                         <p className="text-slate-300 leading-relaxed">{job.requirements}</p>
                       </div>
+
+                      {job.department && (
+                        <div>
+                          <h4 className="text-lg font-semibold text-white mb-3">Department</h4>
+                          <p className="text-slate-300">{job.department}</p>
+                        </div>
+                      )}
                       
                       <div className="flex justify-end pt-4">
                         <Button
