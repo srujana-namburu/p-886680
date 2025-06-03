@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -10,6 +9,7 @@ import { Link, useParams, useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { jobService } from "@/services/supabaseService";
 import { useAuth } from "@/hooks/useAuth";
+import type { JobStatus } from "@/types/database";
 
 const HREditJob = () => {
   const { id } = useParams();
@@ -33,7 +33,7 @@ const HREditJob = () => {
     company_id: '',
     expires_at: '',
     is_featured: false,
-    status: 'active'
+    status: 'active' as JobStatus
   });
 
   useEffect(() => {
@@ -58,7 +58,7 @@ const HREditJob = () => {
             company_id: job.company_id || '',
             expires_at: job.expires_at ? new Date(job.expires_at).toISOString().slice(0, 16) : '',
             is_featured: job.is_featured || false,
-            status: job.status || 'active'
+            status: job.status || 'active' as JobStatus
           });
         } else {
           toast({
@@ -122,7 +122,7 @@ const HREditJob = () => {
         company_id: jobData.company_id.trim() || null,
         expires_at: jobData.expires_at ? new Date(jobData.expires_at).toISOString() : null,
         is_featured: jobData.is_featured,
-        status: jobData.status
+        status: jobData.status as JobStatus
       };
 
       const result = await jobService.updateJob(id!, jobToUpdate);
@@ -291,7 +291,7 @@ const HREditJob = () => {
                   <select
                     id="status"
                     value={jobData.status}
-                    onChange={(e) => setJobData({...jobData, status: e.target.value})}
+                    onChange={(e) => setJobData({...jobData, status: e.target.value as JobStatus})}
                     className="w-full mt-2 bg-slate-700 border-slate-600 text-white rounded-md px-3 py-2"
                   >
                     <option value="active">Active</option>
