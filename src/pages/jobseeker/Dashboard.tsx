@@ -8,7 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import JobSeekerNav from "@/components/JobSeekerNav";
 import AIChat from "@/components/AIChat";
 import { useJobs, useUserApplications } from "@/hooks/useSupabaseData";
-import { applicationService } from "@/services/supabaseService";
+import { applicationService, jobService } from "@/services/supabaseService";
 import { useAuth } from "@/hooks/useAuth";
 import { 
   Search, 

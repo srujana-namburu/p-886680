@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import type { 
   Profile, 
@@ -11,7 +10,8 @@ import type {
   SystemSetting,
   ApplicationStatus,
   UserRole,
-  AIAnalysisType
+  AIAnalysisType,
+  JobStatus
 } from "@/types/database";
 
 // Profile Services
@@ -189,7 +189,7 @@ export const jobService = {
     company_id?: string | null;
     expires_at?: string | null;
     is_featured?: boolean;
-    status?: string;
+    status?: JobStatus;
   }): Promise<JobPosting | null> {
     const { data, error } = await supabase
       .from('job_postings')
