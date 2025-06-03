@@ -18,11 +18,17 @@ const HRCreateJob = () => {
     title: '',
     description: '',
     requirements: '',
+    responsibilities: '',
     location: '',
     job_type: 'full-time',
     experience_level: 'mid-level',
     salary_min: '',
-    salary_max: ''
+    salary_max: '',
+    currency: 'USD',
+    department: '',
+    company_id: '',
+    expires_at: '',
+    is_featured: false
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -44,11 +50,17 @@ const HRCreateJob = () => {
         title: jobData.title.trim(),
         description: jobData.description.trim(),
         requirements: jobData.requirements.trim(),
+        responsibilities: jobData.responsibilities.trim(),
         location: jobData.location.trim(),
         job_type: jobData.job_type,
         experience_level: jobData.experience_level,
-        salary_min: jobData.salary_min ? parseInt(jobData.salary_min) : undefined,
-        salary_max: jobData.salary_max ? parseInt(jobData.salary_max) : undefined,
+        salary_min: jobData.salary_min ? parseInt(jobData.salary_min) : null,
+        salary_max: jobData.salary_max ? parseInt(jobData.salary_max) : null,
+        currency: jobData.currency,
+        department: jobData.department.trim() || null,
+        company_id: jobData.company_id.trim() || null,
+        expires_at: jobData.expires_at ? new Date(jobData.expires_at).toISOString() : null,
+        is_featured: jobData.is_featured
       };
 
       console.log('Creating job with data:', jobToCreate);
@@ -125,6 +137,29 @@ const HRCreateJob = () => {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
+                  <Label htmlFor="department" className="text-slate-200">Department</Label>
+                  <Input
+                    id="department"
+                    value={jobData.department}
+                    onChange={(e) => setJobData({...jobData, department: e.target.value})}
+                    className="bg-slate-700 border-slate-600 text-white mt-2"
+                    placeholder="e.g. Engineering, Marketing"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="company_id" className="text-slate-200">Company ID</Label>
+                  <Input
+                    id="company_id"
+                    value={jobData.company_id}
+                    onChange={(e) => setJobData({...jobData, company_id: e.target.value})}
+                    className="bg-slate-700 border-slate-600 text-white mt-2"
+                    placeholder="Optional: Company UUID"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
                   <Label htmlFor="job_type" className="text-slate-200">Job Type</Label>
                   <select
                     id="job_type"
@@ -136,6 +171,7 @@ const HRCreateJob = () => {
                     <option value="part-time">Part-time</option>
                     <option value="contract">Contract</option>
                     <option value="remote">Remote</option>
+                    <option value="internship">Internship</option>
                   </select>
                 </div>
                 <div>
@@ -154,7 +190,7 @@ const HRCreateJob = () => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div>
                   <Label htmlFor="salary_min" className="text-slate-200">Minimum Salary</Label>
                   <Input
@@ -177,6 +213,44 @@ const HRCreateJob = () => {
                     placeholder="e.g. 120000"
                   />
                 </div>
+                <div>
+                  <Label htmlFor="currency" className="text-slate-200">Currency</Label>
+                  <select
+                    id="currency"
+                    value={jobData.currency}
+                    onChange={(e) => setJobData({...jobData, currency: e.target.value})}
+                    className="w-full mt-2 bg-slate-700 border-slate-600 text-white rounded-md px-3 py-2"
+                  >
+                    <option value="USD">USD</option>
+                    <option value="EUR">EUR</option>
+                    <option value="GBP">GBP</option>
+                    <option value="CAD">CAD</option>
+                    <option value="AUD">AUD</option>
+                    <option value="INR">INR</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <Label htmlFor="expires_at" className="text-slate-200">Job Expiration Date</Label>
+                <Input
+                  id="expires_at"
+                  type="datetime-local"
+                  value={jobData.expires_at}
+                  onChange={(e) => setJobData({...jobData, expires_at: e.target.value})}
+                  className="bg-slate-700 border-slate-600 text-white mt-2"
+                />
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <input
+                  id="is_featured"
+                  type="checkbox"
+                  checked={jobData.is_featured}
+                  onChange={(e) => setJobData({...jobData, is_featured: e.target.checked})}
+                  className="w-4 h-4 text-blue-600 bg-slate-700 border-slate-600 rounded focus:ring-blue-500"
+                />
+                <Label htmlFor="is_featured" className="text-slate-200">Featured Job</Label>
               </div>
 
               <div>
@@ -188,6 +262,17 @@ const HRCreateJob = () => {
                   className="bg-slate-700 border-slate-600 text-white mt-2 min-h-32"
                   placeholder="Describe the role, responsibilities, and what you're looking for..."
                   required
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="responsibilities" className="text-slate-200">Key Responsibilities</Label>
+                <Textarea
+                  id="responsibilities"
+                  value={jobData.responsibilities}
+                  onChange={(e) => setJobData({...jobData, responsibilities: e.target.value})}
+                  className="bg-slate-700 border-slate-600 text-white mt-2 min-h-32"
+                  placeholder="List the main responsibilities and duties..."
                 />
               </div>
 

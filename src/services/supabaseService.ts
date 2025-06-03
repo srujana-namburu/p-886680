@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import type { 
   Profile, 
@@ -122,28 +121,56 @@ export const jobService = {
     title: string;
     description: string;
     requirements: string;
+    responsibilities?: string;
     location: string;
     job_type: string;
     experience_level: string;
-    salary_min?: number;
-    salary_max?: number;
-    company_id?: string;
+    salary_min?: number | null;
+    salary_max?: number | null;
+    currency?: string;
+    department?: string | null;
+    company_id?: string | null;
+    expires_at?: string | null;
+    is_featured?: boolean;
   }): Promise<JobPosting | null> {
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return null;
+    if (!user) {
+      console.error('No authenticated user found');
+      return null;
+    }
+
+    const jobInsertData = {
+      title: jobData.title,
+      description: jobData.description,
+      requirements: jobData.requirements,
+      responsibilities: jobData.responsibilities || null,
+      location: jobData.location,
+      job_type: jobData.job_type,
+      experience_level: jobData.experience_level,
+      salary_min: jobData.salary_min || null,
+      salary_max: jobData.salary_max || null,
+      currency: jobData.currency || 'USD',
+      department: jobData.department || null,
+      company_id: jobData.company_id || null,
+      expires_at: jobData.expires_at || null,
+      is_featured: jobData.is_featured || false,
+      posted_by: user.id,
+      status: 'active' as const,
+      applications_count: 0,
+      views_count: 0
+    };
+
+    console.log('Inserting job data:', jobInsertData);
 
     const { data, error } = await supabase
       .from('job_postings')
-      .insert({
-        ...jobData,
-        posted_by: user.id,
-        status: 'active'
-      })
+      .insert(jobInsertData)
       .select()
       .single();
 
     if (error) {
       console.error('Error creating job:', error);
+      console.error('Error details:', error.message);
       return null;
     }
     return data;
