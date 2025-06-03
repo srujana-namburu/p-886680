@@ -15,6 +15,10 @@ import HRCandidates from "./pages/hr/Candidates";
 import HRCreateJob from "./pages/hr/CreateJob";
 import HREditJob from "./pages/hr/EditJob";
 import CandidateProfile from "./pages/hr/CandidateProfile";
+import ResumeMatcherAI from "./pages/hr/ResumeMatcherAI";
+import InterviewSummary from "./pages/hr/InterviewSummary";
+import ChatSummarizer from "./pages/hr/ChatSummarizer";
+import BiasDetector from "./pages/hr/BiasDetector";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -34,6 +38,10 @@ const App = () => (
           <Route path="/hr/jobs/create" element={<HRCreateJob />} />
           <Route path="/hr/jobs/edit/:id" element={<HREditJob />} />
           <Route path="/hr/candidates/:id" element={<CandidateProfile />} />
+          <Route path="/hr/resume-matcher" element={<ResumeMatcherAI />} />
+          <Route path="/hr/interview-summary" element={<InterviewSummary />} />
+          <Route path="/hr/chat-summarizer" element={<ChatSummarizer />} />
+          <Route path="/hr/bias-detector" element={<BiasDetector />} />
           <Route path="/jobseeker/dashboard" element={<JobSeekerDashboard />} />
           <Route path="/jobseeker/applications" element={<JobSeekerApplications />} />
           <Route path="/jobseeker/profile" element={<JobSeekerProfile />} />
