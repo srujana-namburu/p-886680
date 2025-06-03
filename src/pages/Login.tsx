@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,18 +20,19 @@ const Login = () => {
     userType: "jobseeker"
   });
   const [isLoading, setIsLoading] = useState(false);
+  const [shouldRedirect, setShouldRedirect] = useState(false);
 
-  // Redirect if already authenticated
+  // Only redirect if user is authenticated AND we've successfully signed in
   useEffect(() => {
-    if (user && profile && !loading) {
-      // Use the actual profile role instead of localStorage
+    if (user && profile && !loading && shouldRedirect) {
+      console.log('Redirecting authenticated user with role:', profile.role);
       if (profile.role === 'hr_manager' || profile.role === 'admin' || profile.role === 'recruiter' || profile.role === 'interviewer') {
         navigate('/hr/dashboard');
       } else {
         navigate('/jobseeker/dashboard');
       }
     }
-  }, [user, profile, loading, navigate]);
+  }, [user, profile, loading, navigate, shouldRedirect]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -58,7 +60,8 @@ const Login = () => {
           title: "Welcome back!",
           description: "Successfully signed in to your account.",
         });
-        // Navigation will be handled by the useEffect hook based on actual profile data
+        // Set flag to allow redirection after successful login
+        setShouldRedirect(true);
       }
     } catch (error) {
       console.error('Login error:', error);
