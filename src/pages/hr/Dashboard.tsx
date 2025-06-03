@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -7,14 +6,47 @@ import { Plus, Users, Briefcase, TrendingUp, Eye, Edit, Trash2, BarChart3, Clock
 import { Link } from "react-router-dom";
 import HRNav from "@/components/HRNav";
 import { useAllJobs, useApplicationStats, useRealtimeApplications } from "@/hooks/useSupabaseData";
+import { useToast } from "@/hooks/use-toast";
+import { jobService } from "@/services/supabaseService";
 
 const HRDashboard = () => {
+  const { toast } = useToast();
+  
   // Set up real-time updates
   useRealtimeApplications();
   
   // Fetch real data from database
-  const { data: jobs = [], isLoading: jobsLoading } = useAllJobs();
+  const { data: jobs = [], isLoading: jobsLoading, refetch: refetchJobs } = useAllJobs();
   const { data: applicationStats = {}, isLoading: statsLoading } = useApplicationStats();
+
+  const handleDeleteJob = async (jobId: string, jobTitle: string) => {
+    if (window.confirm(`Are you sure you want to delete the job "${jobTitle}"? This action cannot be undone.`)) {
+      try {
+        const { error } = await jobService.deleteJob(jobId);
+        if (error) {
+          console.error('Error deleting job:', error);
+          toast({
+            title: "Error",
+            description: "Failed to delete job posting. Please try again.",
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "Success",
+            description: "Job posting deleted successfully.",
+          });
+          refetchJobs();
+        }
+      } catch (error) {
+        console.error('Error deleting job:', error);
+        toast({
+          title: "Error",
+          description: "Failed to delete job posting. Please try again.",
+          variant: "destructive",
+        });
+      }
+    }
+  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -178,7 +210,12 @@ const HRDashboard = () => {
                                 <Edit className="h-4 w-4" />
                               </Button>
                             </Link>
-                            <Button size="sm" variant="ghost" className="text-slate-400 hover:text-red-400">
+                            <Button 
+                              size="sm" 
+                              variant="ghost" 
+                              className="text-slate-400 hover:text-red-400"
+                              onClick={() => handleDeleteJob(job.id, job.title)}
+                            >
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           </div>

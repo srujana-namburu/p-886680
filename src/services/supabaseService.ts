@@ -176,6 +176,19 @@ export const jobService = {
     return data;
   },
 
+  async deleteJob(jobId: string): Promise<{ error: any }> {
+    const { error } = await supabase
+      .from('job_postings')
+      .delete()
+      .eq('id', jobId);
+
+    if (error) {
+      console.error('Error deleting job:', error);
+    }
+    
+    return { error };
+  },
+
   async incrementJobViews(jobId: string): Promise<void> {
     const { error } = await supabase.rpc('increment_job_views', {
       job_id: jobId

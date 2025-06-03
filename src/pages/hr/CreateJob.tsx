@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,10 +8,12 @@ import { ArrowLeft, Save, Eye } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { jobService } from "@/services/supabaseService";
+import { useAuth } from "@/hooks/useAuth";
 
 const HRCreateJob = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [jobData, setJobData] = useState({
     title: '',
@@ -34,6 +35,15 @@ const HRCreateJob = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    if (!user) {
+      toast({
+        title: "Error",
+        description: "You must be logged in to create a job.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (!jobData.title || !jobData.description || !jobData.requirements || !jobData.location) {
       toast({
         title: "Error",
@@ -64,6 +74,7 @@ const HRCreateJob = () => {
       };
 
       console.log('Creating job with data:', jobToCreate);
+      console.log('Current user:', user);
 
       const result = await jobService.createJob(jobToCreate);
 
