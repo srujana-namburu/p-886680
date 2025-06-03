@@ -5,7 +5,8 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import JobSeekerNav from "@/components/JobSeekerNav";
-import AIChat from "@/components/AIChat";
+import SupportChatbot from "@/components/SupportChatbot";
+import ChatTranscript from "@/components/ChatTranscript";
 import { useJobs, useUserApplications } from "@/hooks/useSupabaseData";
 import { applicationService, jobService } from "@/services/supabaseService";
 import { useAuth } from "@/hooks/useAuth";
@@ -119,13 +120,11 @@ const JobSeekerDashboard = () => {
     setApplyingToJob(currentJob.id);
 
     try {
-      // For now, we'll save the application without file upload
-      // In a real app, you'd upload the file to Supabase Storage first
       const applicationData = {
         job_id: currentJob.id,
         cover_letter: coverLetter,
+        resume_file: selectedFile || undefined,
         resume_filename: selectedFile?.name,
-        // resume_url would be set after file upload
       };
 
       const result = await applicationService.createApplication(applicationData);
@@ -199,7 +198,7 @@ const JobSeekerDashboard = () => {
       <JobSeekerNav />
       
       <div className="container mx-auto px-6 py-8">
-        {/* Hero Search Section */}
+        
         <div className="mb-12 text-center">
           <h1 className="text-5xl font-bold text-white mb-4">
             Find Your <span className="bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">Dream Job</span>
@@ -227,7 +226,7 @@ const JobSeekerDashboard = () => {
               </Button>
             </div>
 
-            {/* Filter Panel */}
+            
             {showFilters && (
               <Card className="bg-white/5 border-white/10 backdrop-blur-lg mb-6 animate-in slide-in-from-top-5 duration-300">
                 <CardContent className="p-6">
@@ -285,7 +284,7 @@ const JobSeekerDashboard = () => {
           </div>
         </div>
 
-        {/* Job Stats */}
+        
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
           <Card className="bg-white/5 border-white/10 backdrop-blur-lg hover:bg-white/10 transition-all duration-300">
             <CardContent className="p-6 text-center">
@@ -321,7 +320,7 @@ const JobSeekerDashboard = () => {
           </Card>
         </div>
 
-        {/* Job Listings */}
+        
         <div className="space-y-6">
           {filteredJobs.map((job, index) => {
             const isExpanded = expandedJobs.has(job.id);
@@ -394,7 +393,7 @@ const JobSeekerDashboard = () => {
                     </div>
                   </div>
 
-                  {/* Expanded Content */}
+                  
                   {isExpanded && (
                     <div className="border-t border-white/10 pt-6 space-y-6 animate-in slide-in-from-top-5 duration-300">
                       <div>
@@ -449,7 +448,7 @@ const JobSeekerDashboard = () => {
         )}
       </div>
 
-      {/* Application Modal */}
+      
       {showApplicationModal && currentJob && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <Card className="bg-slate-800 border-slate-700 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -524,8 +523,11 @@ const JobSeekerDashboard = () => {
         </div>
       )}
 
-      {/* AI Chat Component */}
-      <AIChat />
+      
+      <SupportChatbot userType="jobseeker" />
+      
+      
+      <ChatTranscript />
     </div>
   );
 };

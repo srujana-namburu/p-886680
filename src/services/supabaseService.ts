@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import type { 
   Profile, 
@@ -334,15 +335,31 @@ export const applicationService = {
     cover_letter?: string;
     resume_url?: string;
     resume_filename?: string;
+    resume_file?: File;
   }): Promise<Application | null> {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return null;
 
+    let resumeUrl = applicationData.resume_url;
+    let resumeFilename = applicationData.resume_filename;
+
+    // Handle file upload if provided
+    if (applicationData.resume_file) {
+      const uploadResult = await resumeService.uploadResume(applicationData.resume_file, user.id);
+      if (uploadResult) {
+        resumeUrl = uploadResult;
+        resumeFilename = applicationData.resume_file.name;
+      }
+    }
+
     const { data, error } = await supabase
       .from('applications')
       .insert({
-        ...applicationData,
+        job_id: applicationData.job_id,
         candidate_id: user.id,
+        cover_letter: applicationData.cover_letter,
+        resume_url: resumeUrl,
+        resume_filename: resumeFilename,
         status: 'pending',
         applied_at: new Date().toISOString()
       })

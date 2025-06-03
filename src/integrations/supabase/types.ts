@@ -635,6 +635,33 @@ export type Database = {
           },
         ]
       }
+      jobseeker_chat_transcripts: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          id: string
+          transcript_data: Json
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          transcript_data: Json
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          transcript_data?: Json
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       notifications: {
         Row: {
           action_url: string | null

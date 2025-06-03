@@ -9,6 +9,7 @@ import { Link, useParams } from "react-router-dom";
 import { applicationService, resumeService } from "@/services/supabaseService";
 import { useToast } from "@/hooks/use-toast";
 import HRNav from "@/components/HRNav";
+import SupportChatbot from "@/components/SupportChatbot";
 import type { Application, ApplicationStatus } from "@/types/database";
 
 const CandidateProfile = () => {
@@ -301,6 +302,9 @@ const CandidateProfile = () => {
           </div>
         </div>
       </div>
+
+      {/* Support Chatbot */}
+      <SupportChatbot userType="hr" />
     </div>
   );
 };
