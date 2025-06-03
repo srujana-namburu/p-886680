@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,11 +5,13 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 import { Briefcase, Mail, Lock, User, Building, ArrowLeft, Users, CheckCircle } from "lucide-react";
 
 const Register = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { signUp } = useAuth();
   const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState({
     userType: "jobseeker",
@@ -57,25 +58,55 @@ const Register = () => {
       return;
     }
 
-    // Simulate registration
-    setTimeout(() => {
-      localStorage.setItem('userType', formData.userType);
-      localStorage.setItem('userEmail', formData.email);
-      localStorage.setItem('userName', formData.fullName);
-      localStorage.setItem('isAuthenticated', 'true');
-      
+    if (formData.password.length < 6) {
       toast({
-        title: "Account Created!",
-        description: "Welcome to TalentHub AI. Your account has been created successfully.",
+        title: "Password Too Short",
+        description: "Password must be at least 6 characters long.",
+        variant: "destructive",
       });
-
-      if (formData.userType === 'hr') {
-        navigate('/hr/dashboard');
-      } else {
-        navigate('/jobseeker/dashboard');
-      }
       setIsLoading(false);
-    }, 2000);
+      return;
+    }
+
+    try {
+      // Prepare user metadata based on user type
+      const userData = {
+        full_name: formData.fullName,
+        role: formData.userType === 'hr' ? 'hr_manager' : 'jobseeker',
+        ...(formData.userType === 'hr' && {
+          company_name: formData.companyName,
+          position: formData.position
+        })
+      };
+
+      console.log('Attempting to sign up user with data:', { email: formData.email, userData });
+
+      const { error } = await signUp(formData.email, formData.password, userData);
+
+      if (error) {
+        console.error('Signup error:', error);
+        toast({
+          title: "Registration Failed",
+          description: error.message || "There was an error creating your account. Please try again.",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Account Created!",
+          description: "Please check your email to verify your account before signing in.",
+        });
+        navigate('/login');
+      }
+    } catch (error) {
+      console.error('Unexpected error during signup:', error);
+      toast({
+        title: "Registration Failed",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const renderStepContent = () => {
@@ -157,11 +188,12 @@ const Register = () => {
                     id="password"
                     name="password"
                     type="password"
-                    placeholder="Create a password"
+                    placeholder="Create a password (min 6 characters)"
                     value={formData.password}
                     onChange={handleInputChange}
                     className="pl-10 bg-white/10 border-white/20 text-white placeholder:text-slate-400 focus:border-blue-400 focus:ring-blue-400/20 h-12"
                     required
+                    minLength={6}
                   />
                 </div>
               </div>

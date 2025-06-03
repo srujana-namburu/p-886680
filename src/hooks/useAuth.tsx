@@ -41,6 +41,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
+      console.log('Initial session:', session);
       setUser(session?.user ?? null);
       if (session?.user) {
         loadProfile(session.user.id);
@@ -53,6 +54,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('Auth state changed:', event, session);
       setUser(session?.user ?? null);
       if (session?.user) {
         await loadProfile(session.user.id);
@@ -67,7 +69,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const loadProfile = async (userId: string) => {
     try {
+      console.log('Loading profile for user:', userId);
       const userProfile = await profileService.getCurrentProfile();
+      console.log('Loaded profile:', userProfile);
       setProfile(userProfile);
     } catch (error) {
       console.error('Error loading profile:', error);
@@ -77,31 +81,47 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const signIn = async (email: string, password: string) => {
+    console.log('Attempting to sign in user:', email);
     const { error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
+    if (error) {
+      console.error('Sign in error:', error);
+    }
     return { error };
   };
 
   const signUp = async (email: string, password: string, userData: any) => {
+    console.log('Attempting to sign up user:', email, 'with metadata:', userData);
+    
     const { error } = await supabase.auth.signUp({
       email,
       password,
       options: {
         data: userData,
+        emailRedirectTo: `${window.location.origin}/login`
       },
     });
+    
+    if (error) {
+      console.error('Sign up error:', error);
+    } else {
+      console.log('User signup successful, check email for verification');
+    }
+    
     return { error };
   };
 
   const signOut = async () => {
+    console.log('Signing out user');
     await supabase.auth.signOut();
   };
 
   const updateProfile = async (updates: Partial<Profile>) => {
     if (!user) return;
     
+    console.log('Updating profile for user:', user.id, 'with updates:', updates);
     const updatedProfile = await profileService.updateProfile(user.id, updates);
     if (updatedProfile) {
       setProfile(updatedProfile);
