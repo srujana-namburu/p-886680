@@ -1,12 +1,13 @@
 
 import { useState, useEffect, createContext, useContext } from 'react';
 import { supabase } from "@/integrations/supabase/client";
-import { User } from '@supabase/supabase-js';
+import { User, Session } from '@supabase/supabase-js';
 import { Profile } from '@/types/database';
 import { profileService } from '@/services/supabaseService';
 
 interface AuthContextType {
   user: User | null;
+  session: Session | null;
   profile: Profile | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
@@ -17,6 +18,7 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
+  session: null,
   profile: null,
   loading: true,
   signIn: async () => ({ error: null }),
@@ -35,31 +37,36 @@ export const useAuth = () => {
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      console.log('Initial session:', session);
+    // Set up auth state listener FIRST
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('Auth state changed:', event, session);
+      setSession(session);
       setUser(session?.user ?? null);
+      
       if (session?.user) {
-        loadProfile(session.user.id);
+        // Use setTimeout to prevent potential deadlocks
+        setTimeout(() => {
+          loadProfile(session.user.id);
+        }, 0);
       } else {
+        setProfile(null);
         setLoading(false);
       }
     });
 
-    // Listen for auth changes
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('Auth state changed:', event, session);
+    // THEN check for existing session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      console.log('Initial session check:', session);
+      setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
-        await loadProfile(session.user.id);
+        loadProfile(session.user.id);
       } else {
-        setProfile(null);
         setLoading(false);
       }
     });
@@ -130,6 +137,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const value = {
     user,
+    session,
     profile,
     loading,
     signIn,

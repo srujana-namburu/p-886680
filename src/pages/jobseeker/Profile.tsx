@@ -1,394 +1,314 @@
 
-import { useState } from "react";
+import React, { useState } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import { ArrowLeft, User, Mail, Phone, MapPin, Building, Linkedin, Save, Edit } from "lucide-react";
+import { Link } from "react-router-dom";
 import JobSeekerNav from "@/components/JobSeekerNav";
+import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
-import { 
-  User, 
-  Mail, 
-  Phone, 
-  MapPin, 
-  Briefcase, 
-  Upload, 
-  Save,
-  Camera,
-  Plus,
-  X,
-  Calendar,
-  Building,
-  GraduationCap
-} from "lucide-react";
 
 const JobSeekerProfile = () => {
+  const { user, profile, updateProfile, loading } = useAuth();
   const { toast } = useToast();
   const [isEditing, setIsEditing] = useState(false);
-  const [profileData, setProfileData] = useState({
-    fullName: "John Doe",
-    email: "john.doe@email.com",
-    phone: "+1 (555) 123-4567",
-    location: "San Francisco, CA",
-    title: "Senior Frontend Developer",
-    bio: "Passionate frontend developer with 5+ years of experience building responsive web applications using React, TypeScript, and modern CSS frameworks.",
-    experience: [
-      {
-        id: "1",
-        title: "Senior Frontend Developer",
-        company: "TechCorp Solutions",
-        duration: "2022 - Present",
-        description: "Lead frontend development for multiple client projects, mentoring junior developers."
-      },
-      {
-        id: "2",
-        title: "Frontend Developer",
-        company: "WebDev Agency",
-        duration: "2020 - 2022",
-        description: "Developed responsive websites and web applications using React and Vue.js."
-      }
-    ],
-    education: [
-      {
-        id: "1",
-        degree: "Bachelor of Computer Science",
-        school: "University of California",
-        year: "2020"
-      }
-    ],
-    skills: ["React", "TypeScript", "JavaScript", "CSS/SCSS", "Node.js", "Git", "Figma", "Responsive Design"]
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [formData, setFormData] = useState({
+    full_name: profile?.full_name || '',
+    email: profile?.email || user?.email || '',
+    phone: profile?.phone || '',
+    location: profile?.location || '',
+    company_name: profile?.company_name || '',
+    linkedin_url: profile?.linkedin_url || '',
   });
-  const [newSkill, setNewSkill] = useState("");
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    setProfileData({ ...profileData, [e.target.name]: e.target.value });
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value
+    });
   };
 
-  const handleSave = () => {
-    toast({
-      title: "Profile Updated!",
-      description: "Your profile has been successfully updated.",
+  const handleSave = async () => {
+    setIsUpdating(true);
+    try {
+      await updateProfile(formData);
+      setIsEditing(false);
+      toast({
+        title: "Success!",
+        description: "Your profile has been updated successfully.",
+      });
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update profile. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleCancel = () => {
+    setFormData({
+      full_name: profile?.full_name || '',
+      email: profile?.email || user?.email || '',
+      phone: profile?.phone || '',
+      location: profile?.location || '',
+      company_name: profile?.company_name || '',
+      linkedin_url: profile?.linkedin_url || '',
     });
     setIsEditing(false);
   };
 
-  const addSkill = () => {
-    if (newSkill.trim() && !profileData.skills.includes(newSkill.trim())) {
-      setProfileData({
-        ...profileData,
-        skills: [...profileData.skills, newSkill.trim()]
-      });
-      setNewSkill("");
-    }
-  };
-
-  const removeSkill = (skillToRemove: string) => {
-    setProfileData({
-      ...profileData,
-      skills: profileData.skills.filter(skill => skill !== skillToRemove)
-    });
-  };
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-slate-50">
+        <JobSeekerNav />
+        <div className="container mx-auto px-4 py-8">
+          <div className="flex items-center justify-center min-h-[400px]">
+            <div className="text-center">
+              <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+              <p className="text-slate-600">Loading your profile...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900">
+    <div className="min-h-screen bg-slate-50">
       <JobSeekerNav />
       
-      <div className="container mx-auto px-6 py-8">
-        {/* Header */}
-        <div className="flex justify-between items-center mb-8">
-          <div>
-            <h1 className="text-4xl font-bold text-white mb-2">
-              My <span className="bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">Profile</span>
-            </h1>
-            <p className="text-xl text-slate-300">Manage your professional information</p>
+      <div className="container mx-auto px-4 py-8">
+        <div className="flex items-center gap-4 mb-8">
+          <Link to="/jobseeker/dashboard">
+            <Button variant="outline" size="sm" className="border-slate-300">
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Back to Dashboard
+            </Button>
+          </Link>
+          <div className="flex-1">
+            <h1 className="text-3xl font-bold text-slate-900">My Profile</h1>
+            <p className="text-slate-600 mt-2">Manage your personal information and preferences</p>
           </div>
-          <Button
-            onClick={() => isEditing ? handleSave() : setIsEditing(true)}
-            className={`transition-all duration-300 ${
-              isEditing 
-                ? 'bg-gradient-to-r from-green-500 to-blue-500 hover:from-green-600 hover:to-blue-600' 
-                : 'bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600'
-            } text-white border-0`}
-          >
-            {isEditing ? (
-              <>
-                <Save className="h-4 w-4 mr-2" />
-                Save Changes
-              </>
-            ) : (
-              <>
-                <User className="h-4 w-4 mr-2" />
-                Edit Profile
-              </>
-            )}
-          </Button>
+          {!isEditing && (
+            <Button onClick={() => setIsEditing(true)} className="bg-blue-600 hover:bg-blue-700">
+              <Edit className="w-4 h-4 mr-2" />
+              Edit Profile
+            </Button>
+          )}
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Left Column - Profile Info */}
-          <div className="lg:col-span-1 space-y-6">
-            {/* Profile Picture & Basic Info */}
-            <Card className="bg-white/5 border-white/10 backdrop-blur-lg">
-              <CardContent className="p-6 text-center">
-                <div className="relative inline-block mb-4">
-                  <div className="w-32 h-32 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center mx-auto">
-                    <User className="h-16 w-16 text-white" />
-                  </div>
-                  {isEditing && (
-                    <Button
-                      size="sm"
-                      className="absolute bottom-0 right-0 w-10 h-10 rounded-full bg-blue-500 hover:bg-blue-600"
-                    >
-                      <Camera className="h-4 w-4" />
-                    </Button>
-                  )}
+          {/* Profile Overview */}
+          <div className="lg:col-span-1">
+            <Card className="bg-white border-slate-200">
+              <CardHeader className="text-center">
+                <div className="w-24 h-24 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <User className="w-12 h-12 text-white" />
                 </div>
-                
-                {isEditing ? (
-                  <div className="space-y-3">
-                    <Input
-                      name="fullName"
-                      value={profileData.fullName}
-                      onChange={handleInputChange}
-                      className="bg-white/10 border-white/20 text-white text-center font-semibold"
-                    />
-                    <Input
-                      name="title"
-                      value={profileData.title}
-                      onChange={handleInputChange}
-                      className="bg-white/10 border-white/20 text-white text-center"
-                    />
-                  </div>
-                ) : (
-                  <>
-                    <h2 className="text-2xl font-bold text-white mb-1">{profileData.fullName}</h2>
-                    <p className="text-blue-300 font-medium">{profileData.title}</p>
-                  </>
-                )}
-                
-                <div className="flex items-center justify-center gap-1 text-slate-300 mt-2">
-                  <MapPin className="h-4 w-4" />
-                  <span>{profileData.location}</span>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Contact Information */}
-            <Card className="bg-white/5 border-white/10 backdrop-blur-lg">
-              <CardHeader>
-                <CardTitle className="text-white">Contact Information</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label className="text-slate-300">Email</Label>
-                  {isEditing ? (
-                    <div className="relative">
-                      <Mail className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
-                      <Input
-                        name="email"
-                        value={profileData.email}
-                        onChange={handleInputChange}
-                        className="pl-10 bg-white/10 border-white/20 text-white"
-                      />
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-2 text-white">
-                      <Mail className="h-4 w-4 text-slate-400" />
-                      <span>{profileData.email}</span>
-                    </div>
-                  )}
-                </div>
-                
-                <div className="space-y-2">
-                  <Label className="text-slate-300">Phone</Label>
-                  {isEditing ? (
-                    <div className="relative">
-                      <Phone className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
-                      <Input
-                        name="phone"
-                        value={profileData.phone}
-                        onChange={handleInputChange}
-                        className="pl-10 bg-white/10 border-white/20 text-white"
-                      />
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-2 text-white">
-                      <Phone className="h-4 w-4 text-slate-400" />
-                      <span>{profileData.phone}</span>
-                    </div>
-                  )}
-                </div>
-                
-                <div className="space-y-2">
-                  <Label className="text-slate-300">Location</Label>
-                  {isEditing ? (
-                    <div className="relative">
-                      <MapPin className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
-                      <Input
-                        name="location"
-                        value={profileData.location}
-                        onChange={handleInputChange}
-                        className="pl-10 bg-white/10 border-white/20 text-white"
-                      />
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-2 text-white">
-                      <MapPin className="h-4 w-4 text-slate-400" />
-                      <span>{profileData.location}</span>
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Resume Upload */}
-            <Card className="bg-white/5 border-white/10 backdrop-blur-lg">
-              <CardHeader>
-                <CardTitle className="text-white">Resume</CardTitle>
+                <CardTitle className="text-xl text-slate-900">
+                  {profile?.full_name || 'Your Name'}
+                </CardTitle>
+                <p className="text-slate-600">{profile?.role === 'jobseeker' ? 'Job Seeker' : profile?.role || 'Job Seeker'}</p>
+                <Badge variant="outline" className="w-fit mx-auto mt-2">
+                  {profile?.is_active ? 'Active' : 'Inactive'}
+                </Badge>
               </CardHeader>
               <CardContent>
-                <div className="border-2 border-dashed border-white/20 rounded-lg p-6 text-center bg-white/5 hover:bg-white/10 transition-colors">
-                  <Upload className="h-8 w-8 text-slate-400 mx-auto mb-2" />
-                  <p className="text-white font-medium mb-1">Upload New Resume</p>
-                  <p className="text-slate-400 text-sm">PDF, DOC, DOCX (Max 5MB)</p>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="mt-3 border-blue-400/30 text-blue-300 hover:bg-blue-500/10"
-                  >
-                    Choose File
-                  </Button>
+                <div className="space-y-3 text-sm">
+                  <div className="flex items-center gap-2">
+                    <Mail className="w-4 h-4 text-slate-400" />
+                    <span className="text-slate-600">{profile?.email || user?.email || 'Email not available'}</span>
+                  </div>
+                  {profile?.phone && (
+                    <div className="flex items-center gap-2">
+                      <Phone className="w-4 h-4 text-slate-400" />
+                      <span className="text-slate-600">{profile.phone}</span>
+                    </div>
+                  )}
+                  {profile?.location && (
+                    <div className="flex items-center gap-2">
+                      <MapPin className="w-4 h-4 text-slate-400" />
+                      <span className="text-slate-600">{profile.location}</span>
+                    </div>
+                  )}
+                  {profile?.linkedin_url && (
+                    <div className="flex items-center gap-2">
+                      <Linkedin className="w-4 h-4 text-slate-400" />
+                      <a href={profile.linkedin_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                        LinkedIn Profile
+                      </a>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
           </div>
 
-          {/* Right Column - Detailed Information */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* About Me */}
-            <Card className="bg-white/5 border-white/10 backdrop-blur-lg">
+          {/* Profile Details */}
+          <div className="lg:col-span-2">
+            <Card className="bg-white border-slate-200">
               <CardHeader>
-                <CardTitle className="text-white">About Me</CardTitle>
+                <CardTitle className="text-xl text-slate-900">Personal Information</CardTitle>
+                <p className="text-slate-600">Update your personal details and contact information</p>
               </CardHeader>
               <CardContent>
-                {isEditing ? (
-                  <Textarea
-                    name="bio"
-                    value={profileData.bio}
-                    onChange={handleInputChange}
-                    rows={4}
-                    className="bg-white/10 border-white/20 text-white placeholder:text-slate-400 resize-none"
-                    placeholder="Write a brief description about yourself..."
-                  />
-                ) : (
-                  <p className="text-slate-300 leading-relaxed">{profileData.bio}</p>
-                )}
-              </CardContent>
-            </Card>
+                <form className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <Label htmlFor="full_name" className="text-slate-700">Full Name</Label>
+                      <Input
+                        id="full_name"
+                        name="full_name"
+                        value={formData.full_name}
+                        onChange={handleInputChange}
+                        disabled={!isEditing}
+                        className={`mt-2 ${!isEditing ? 'bg-slate-50' : ''}`}
+                        placeholder="Enter your full name"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="email" className="text-slate-700">Email Address</Label>
+                      <Input
+                        id="email"
+                        name="email"
+                        type="email"
+                        value={formData.email}
+                        onChange={handleInputChange}
+                        disabled={true} // Email should not be editable
+                        className="mt-2 bg-slate-50"
+                        placeholder="Enter your email"
+                      />
+                      <p className="text-xs text-slate-500 mt-1">Email cannot be changed</p>
+                    </div>
+                  </div>
 
-            {/* Skills */}
-            <Card className="bg-white/5 border-white/10 backdrop-blur-lg">
-              <CardHeader>
-                <CardTitle className="text-white">Skills</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex flex-wrap gap-2 mb-4">
-                  {profileData.skills.map((skill, index) => (
-                    <Badge 
-                      key={index}
-                      className="bg-blue-500/20 text-blue-300 border-blue-400/30 relative group"
-                    >
-                      <span>{skill}</span>
-                      {isEditing && (
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="ml-2 h-4 w-4 p-0 hover:bg-red-500/20 text-red-400"
-                          onClick={() => removeSkill(skill)}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <Label htmlFor="phone" className="text-slate-700">Phone Number</Label>
+                      <Input
+                        id="phone"
+                        name="phone"
+                        value={formData.phone}
+                        onChange={handleInputChange}
+                        disabled={!isEditing}
+                        className={`mt-2 ${!isEditing ? 'bg-slate-50' : ''}`}
+                        placeholder="Enter your phone number"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="location" className="text-slate-700">Location</Label>
+                      <Input
+                        id="location"
+                        name="location"
+                        value={formData.location}
+                        onChange={handleInputChange}
+                        disabled={!isEditing}
+                        className={`mt-2 ${!isEditing ? 'bg-slate-50' : ''}`}
+                        placeholder="Enter your location"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <Label htmlFor="company_name" className="text-slate-700">Current Company</Label>
+                      <Input
+                        id="company_name"
+                        name="company_name"
+                        value={formData.company_name}
+                        onChange={handleInputChange}
+                        disabled={!isEditing}
+                        className={`mt-2 ${!isEditing ? 'bg-slate-50' : ''}`}
+                        placeholder="Enter your current company"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="linkedin_url" className="text-slate-700">LinkedIn URL</Label>
+                      <Input
+                        id="linkedin_url"
+                        name="linkedin_url"
+                        value={formData.linkedin_url}
+                        onChange={handleInputChange}
+                        disabled={!isEditing}
+                        className={`mt-2 ${!isEditing ? 'bg-slate-50' : ''}`}
+                        placeholder="Enter your LinkedIn profile URL"
+                      />
+                    </div>
+                  </div>
+
+                  {isEditing && (
+                    <>
+                      <Separator />
+                      <div className="flex gap-4">
+                        <Button 
+                          type="button" 
+                          onClick={handleSave}
+                          disabled={isUpdating}
+                          className="bg-blue-600 hover:bg-blue-700"
                         >
-                          <X className="h-3 w-3" />
+                          <Save className="w-4 h-4 mr-2" />
+                          {isUpdating ? 'Saving...' : 'Save Changes'}
                         </Button>
-                      )}
-                    </Badge>
-                  ))}
+                        <Button 
+                          type="button" 
+                          variant="outline" 
+                          onClick={handleCancel}
+                          disabled={isUpdating}
+                          className="border-slate-300"
+                        >
+                          Cancel
+                        </Button>
+                      </div>
+                    </>
+                  )}
+                </form>
+              </CardContent>
+            </Card>
+
+            {/* Account Information */}
+            <Card className="bg-white border-slate-200 mt-6">
+              <CardHeader>
+                <CardTitle className="text-xl text-slate-900">Account Information</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
+                  <div>
+                    <Label className="text-slate-700">Account Status</Label>
+                    <div className="mt-2">
+                      <Badge variant={profile?.is_active ? "default" : "secondary"}>
+                        {profile?.is_active ? 'Active' : 'Inactive'}
+                      </Badge>
+                    </div>
+                  </div>
+                  <div>
+                    <Label className="text-slate-700">Member Since</Label>
+                    <p className="mt-2 text-slate-600">
+                      {profile?.created_at ? new Date(profile.created_at).toLocaleDateString() : 'Date not available'}
+                    </p>
+                  </div>
+                  <div>
+                    <Label className="text-slate-700">Last Login</Label>
+                    <p className="mt-2 text-slate-600">
+                      {profile?.last_login_at ? new Date(profile.last_login_at).toLocaleDateString() : 'Not available'}
+                    </p>
+                  </div>
+                  <div>
+                    <Label className="text-slate-700">User ID</Label>
+                    <p className="mt-2 text-slate-600 font-mono text-xs">
+                      {user?.id || 'Not available'}
+                    </p>
+                  </div>
                 </div>
-                
-                {isEditing && (
-                  <div className="flex gap-2">
-                    <Input
-                      value={newSkill}
-                      onChange={(e) => setNewSkill(e.target.value)}
-                      placeholder="Add a skill..."
-                      className="bg-white/10 border-white/20 text-white placeholder:text-slate-400"
-                      onKeyPress={(e) => e.key === 'Enter' && addSkill()}
-                    />
-                    <Button
-                      onClick={addSkill}
-                      variant="outline"
-                      className="border-blue-400/30 text-blue-300 hover:bg-blue-500/10"
-                    >
-                      <Plus className="h-4 w-4" />
-                    </Button>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Experience */}
-            <Card className="bg-white/5 border-white/10 backdrop-blur-lg">
-              <CardHeader>
-                <CardTitle className="text-white">Work Experience</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                {profileData.experience.map((exp, index) => (
-                  <div key={exp.id} className="relative">
-                    {index > 0 && <div className="absolute left-6 -top-6 w-px h-6 bg-white/20" />}
-                    <div className="flex gap-4">
-                      <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg flex items-center justify-center flex-shrink-0">
-                        <Briefcase className="h-6 w-6 text-white" />
-                      </div>
-                      <div className="flex-1">
-                        <h3 className="text-lg font-semibold text-white">{exp.title}</h3>
-                        <div className="flex items-center gap-2 text-blue-300 mb-2">
-                          <Building className="h-4 w-4" />
-                          <span>{exp.company}</span>
-                          <span>•</span>
-                          <div className="flex items-center gap-1">
-                            <Calendar className="h-4 w-4" />
-                            <span>{exp.duration}</span>
-                          </div>
-                        </div>
-                        <p className="text-slate-300">{exp.description}</p>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
-
-            {/* Education */}
-            <Card className="bg-white/5 border-white/10 backdrop-blur-lg">
-              <CardHeader>
-                <CardTitle className="text-white">Education</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {profileData.education.map((edu, index) => (
-                  <div key={edu.id} className="flex gap-4">
-                    <div className="w-12 h-12 bg-gradient-to-r from-emerald-500 to-blue-500 rounded-lg flex items-center justify-center flex-shrink-0">
-                      <GraduationCap className="h-6 w-6 text-white" />
-                    </div>
-                    <div className="flex-1">
-                      <h3 className="text-lg font-semibold text-white">{edu.degree}</h3>
-                      <div className="flex items-center gap-2 text-emerald-300">
-                        <span>{edu.school}</span>
-                        <span>•</span>
-                        <span>{edu.year}</span>
-                      </div>
-                    </div>
-                  </div>
-                ))}
               </CardContent>
             </Card>
           </div>

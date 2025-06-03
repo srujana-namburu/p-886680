@@ -4,20 +4,34 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 import { Briefcase, Mail, Lock, ArrowLeft, Users } from "lucide-react";
+import { useEffect } from "react";
 
 const Login = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { signIn, user, loading } = useAuth();
   const [formData, setFormData] = useState({
     email: "",
     password: "",
     userType: "jobseeker"
   });
   const [isLoading, setIsLoading] = useState(false);
+
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (user && !loading) {
+      const userType = localStorage.getItem('userType') || 'jobseeker';
+      if (userType === 'hr') {
+        navigate('/hr/dashboard');
+      } else {
+        navigate('/jobseeker/dashboard');
+      }
+    }
+  }, [user, loading, navigate]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -31,25 +45,47 @@ const Login = () => {
     e.preventDefault();
     setIsLoading(true);
 
-    // Simulate authentication
-    setTimeout(() => {
-      localStorage.setItem('userType', formData.userType);
-      localStorage.setItem('userEmail', formData.email);
-      localStorage.setItem('isAuthenticated', 'true');
+    try {
+      const { error } = await signIn(formData.email, formData.password);
       
-      toast({
-        title: "Welcome back!",
-        description: "Successfully signed in to your account.",
-      });
-
-      if (formData.userType === 'hr') {
-        navigate('/hr/dashboard');
+      if (error) {
+        toast({
+          title: "Error",
+          description: error.message || "Failed to sign in. Please check your credentials.",
+          variant: "destructive",
+        });
       } else {
-        navigate('/jobseeker/dashboard');
+        // Store user type for navigation
+        localStorage.setItem('userType', formData.userType);
+        localStorage.setItem('userEmail', formData.email);
+        localStorage.setItem('isAuthenticated', 'true');
+        
+        toast({
+          title: "Welcome back!",
+          description: "Successfully signed in to your account.",
+        });
+
+        // Navigation will be handled by the useEffect hook
       }
+    } catch (error) {
+      console.error('Login error:', error);
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
       setIsLoading(false);
-    }, 1500);
+    }
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex items-center justify-center">
+        <div className="text-white">Loading...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex items-center justify-center p-6 relative overflow-hidden">
