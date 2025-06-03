@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,7 +12,7 @@ import { useEffect } from "react";
 const Login = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { signIn, user, loading } = useAuth();
+  const { signIn, user, profile, loading } = useAuth();
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -23,15 +22,15 @@ const Login = () => {
 
   // Redirect if already authenticated
   useEffect(() => {
-    if (user && !loading) {
-      const userType = localStorage.getItem('userType') || 'jobseeker';
-      if (userType === 'hr') {
+    if (user && profile && !loading) {
+      // Use the actual profile role instead of localStorage
+      if (profile.role === 'hr_manager' || profile.role === 'admin' || profile.role === 'recruiter' || profile.role === 'interviewer') {
         navigate('/hr/dashboard');
       } else {
         navigate('/jobseeker/dashboard');
       }
     }
-  }, [user, loading, navigate]);
+  }, [user, profile, loading, navigate]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -55,17 +54,11 @@ const Login = () => {
           variant: "destructive",
         });
       } else {
-        // Store user type for navigation
-        localStorage.setItem('userType', formData.userType);
-        localStorage.setItem('userEmail', formData.email);
-        localStorage.setItem('isAuthenticated', 'true');
-        
         toast({
           title: "Welcome back!",
           description: "Successfully signed in to your account.",
         });
-
-        // Navigation will be handled by the useEffect hook
+        // Navigation will be handled by the useEffect hook based on actual profile data
       }
     } catch (error) {
       console.error('Login error:', error);
