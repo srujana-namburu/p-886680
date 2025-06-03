@@ -167,8 +167,8 @@ export const applicationService = {
       .from('applications')
       .select(`
         *,
-        job_postings!inner(*),
-        profiles!inner(*)
+        job_postings(*),
+        profiles(*)
       `)
       .order('created_at', { ascending: false });
 
@@ -199,7 +199,7 @@ export const applicationService = {
       .from('applications')
       .select(`
         *,
-        job_postings!inner(*)
+        job_postings(*)
       `)
       .eq('candidate_id', userId)
       .order('created_at', { ascending: false });
@@ -288,10 +288,10 @@ export const interviewService = {
       .from('interviews')
       .select(`
         *,
-        applications!inner(
+        applications(
           *,
-          job_postings!inner(*),
-          profiles!inner(*)
+          job_postings(*),
+          profiles(*)
         ),
         profiles!interviews_interviewer_id_fkey(*)
       `)
