@@ -288,6 +288,30 @@ export const applicationService = {
     })) as Application[];
   },
 
+  async getApplicationById(id: string): Promise<Application | null> {
+    const { data, error } = await supabase
+      .from('applications')
+      .select(`
+        *,
+        job_postings(*),
+        candidate:profiles!applications_candidate_id_fkey(*)
+      `)
+      .eq('id', id)
+      .single();
+
+    if (error) {
+      console.error('Error fetching application:', error);
+      return null;
+    }
+
+    // Transform the data to match our Application interface
+    return {
+      ...data,
+      job: data.job_postings,
+      candidate: data.candidate
+    } as Application;
+  },
+
   async createApplication(applicationData: {
     job_id: string;
     cover_letter?: string;
@@ -350,6 +374,74 @@ export const applicationService = {
     }, {} as { [key: string]: number });
 
     return stats;
+  },
+
+  async getJobApplicationsWithResumes(jobId: string): Promise<Application[]> {
+    const { data, error } = await supabase
+      .from('applications')
+      .select(`
+        *,
+        candidate:profiles!applications_candidate_id_fkey(*)
+      `)
+      .eq('job_id', jobId)
+      .not('resume_url', 'is', null)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching job applications with resumes:', error);
+      return [];
+    }
+
+    return (data || []).map(item => ({
+      ...item,
+      candidate: item.candidate
+    })) as Application[];
+  }
+};
+
+// Resume Services
+export const resumeService = {
+  async uploadResume(file: File, userId: string): Promise<string | null> {
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${userId}/${Date.now()}.${fileExt}`;
+    
+    const { data, error } = await supabase.storage
+      .from('resumes')
+      .upload(fileName, file, {
+        upsert: true
+      });
+
+    if (error) {
+      console.error('Error uploading resume:', error);
+      return null;
+    }
+
+    const { data: { publicUrl } } = supabase.storage
+      .from('resumes')
+      .getPublicUrl(fileName);
+
+    return publicUrl;
+  },
+
+  async downloadResume(filePath: string): Promise<Blob | null> {
+    const { data, error } = await supabase.storage
+      .from('resumes')
+      .download(filePath);
+
+    if (error) {
+      console.error('Error downloading resume:', error);
+      return null;
+    }
+
+    return data;
+  },
+
+  async getResumeUrl(filePath: string): Promise<string | null> {
+    const { data } = supabase.storage
+      .from('resumes')
+      .getPublicUrl(filePath);
+
+    return data.publicUrl;
   }
 };
 

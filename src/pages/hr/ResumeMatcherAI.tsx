@@ -1,88 +1,141 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Brain, Upload, FileText, BarChart3 } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
+import { Badge } from "@/components/ui/badge";
+import { Upload, FileText, Download, Eye, Sparkles, ArrowLeft } from "lucide-react";
 import { Link } from "react-router-dom";
-import { useToast } from "@/hooks/use-toast";
 import HRNav from "@/components/HRNav";
 import { useAllJobs } from "@/hooks/useSupabaseData";
+import { applicationService, resumeService } from "@/services/supabaseService";
+import { useToast } from "@/hooks/use-toast";
+import type { JobPosting, Application } from "@/types/database";
 
 const ResumeMatcherAI = () => {
+  const [selectedJob, setSelectedJob] = useState<string>('');
+  const [applications, setApplications] = useState<Application[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [analyzing, setAnalyzing] = useState(false);
+  const [analysisResults, setAnalysisResults] = useState<any[]>([]);
+  
+  const { data: jobs = [], isLoading: jobsLoading } = useAllJobs();
   const { toast } = useToast();
-  const { data: jobs = [] } = useAllJobs();
-  const [selectedJobId, setSelectedJobId] = useState('');
-  const [jobRole, setJobRole] = useState('');
-  const [jobDescription, setJobDescription] = useState('');
-  const [requirements, setRequirements] = useState('');
-  const [resumeText, setResumeText] = useState('');
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [analysisResult, setAnalysisResult] = useState<any>(null);
 
-  const handleJobSelect = (jobId: string) => {
-    setSelectedJobId(jobId);
-    const selectedJob = jobs.find(job => job.id === jobId);
+  useEffect(() => {
     if (selectedJob) {
-      setJobRole(selectedJob.title);
-      setJobDescription(selectedJob.description);
-      setRequirements(selectedJob.requirements);
+      fetchJobApplications();
+    }
+  }, [selectedJob]);
+
+  const fetchJobApplications = async () => {
+    if (!selectedJob) return;
+    
+    setLoading(true);
+    try {
+      const jobApplications = await applicationService.getJobApplicationsWithResumes(selectedJob);
+      setApplications(jobApplications);
+      console.log(`Found ${jobApplications.length} applications with resumes for job ${selectedJob}`);
+    } catch (error) {
+      console.error('Error fetching job applications:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load applications for this job.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleAnalyze = async () => {
-    if (!jobRole || !jobDescription || !requirements || !resumeText) {
+  const handleAnalyzeResumes = async () => {
+    if (!selectedJob || applications.length === 0) {
       toast({
-        title: "Missing Information",
-        description: "Please fill in all fields before analyzing.",
+        title: "No resumes to analyze",
+        description: "Please select a job with applications that include resumes.",
         variant: "destructive",
       });
       return;
     }
 
-    setIsAnalyzing(true);
-
-    try {
-      // Simulate AI analysis
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // Mock analysis result
-      const mockResult = {
-        overallMatch: Math.floor(Math.random() * 40) + 60, // 60-100%
-        skillsMatch: Math.floor(Math.random() * 30) + 70,
-        experienceMatch: Math.floor(Math.random() * 25) + 75,
-        educationMatch: Math.floor(Math.random() * 20) + 80,
-        strengths: [
-          "Strong technical background",
-          "Relevant work experience",
-          "Good educational qualifications"
+    setAnalyzing(true);
+    
+    // Simulate AI analysis
+    setTimeout(() => {
+      const mockResults = applications.map((application, index) => ({
+        applicationId: application.id,
+        candidateName: application.candidate?.full_name || 'Unknown',
+        matchScore: Math.floor(Math.random() * 40) + 60, // 60-100%
+        keyStrengths: [
+          'Strong technical background',
+          'Relevant work experience',
+          'Good communication skills'
         ],
         gaps: [
-          "Missing some specific skills mentioned in requirements",
-          "Could benefit from additional certifications"
+          'Limited experience with specific technology',
+          'Could benefit from industry certification'
         ],
-        recommendation: "This candidate shows good potential with relevant experience. Consider for interview."
-      };
-
-      setAnalysisResult(mockResult);
+        recommendation: Math.random() > 0.3 ? 'Recommended for interview' : 'Consider for further review'
+      }));
+      
+      setAnalysisResults(mockResults.sort((a, b) => b.matchScore - a.matchScore));
+      setAnalyzing(false);
       
       toast({
         title: "Analysis Complete",
-        description: "Resume analysis has been completed successfully.",
+        description: `Analyzed ${applications.length} resumes successfully.`,
       });
+    }, 3000);
+  };
+
+  const handleDownloadResume = async (application: Application) => {
+    if (!application.resume_url) return;
+
+    try {
+      const url = new URL(application.resume_url);
+      const filePath = url.pathname.split('/').pop();
+      
+      if (filePath) {
+        const blob = await resumeService.downloadResume(filePath);
+        if (blob) {
+          const downloadUrl = window.URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = downloadUrl;
+          a.download = application.resume_filename || 'resume.pdf';
+          document.body.appendChild(a);
+          a.click();
+          window.URL.revokeObjectURL(downloadUrl);
+          document.body.removeChild(a);
+          
+          toast({
+            title: "Success",
+            description: "Resume downloaded successfully.",
+          });
+        }
+      }
     } catch (error) {
-      console.error('Analysis error:', error);
+      console.error('Error downloading resume:', error);
       toast({
-        title: "Analysis Failed",
-        description: "Failed to analyze resume. Please try again.",
+        title: "Error",
+        description: "Failed to download resume.",
         variant: "destructive",
       });
-    } finally {
-      setIsAnalyzing(false);
     }
+  };
+
+  const getScoreColor = (score: number) => {
+    if (score >= 80) return 'text-green-400';
+    if (score >= 60) return 'text-yellow-400';
+    return 'text-red-400';
+  };
+
+  const getScoreBadgeColor = (score: number) => {
+    if (score >= 80) return 'bg-green-500/20 text-green-300 border-green-500/30';
+    if (score >= 60) return 'bg-yellow-500/20 text-yellow-300 border-yellow-500/30';
+    return 'bg-red-500/20 text-red-300 border-red-500/30';
   };
 
   return (
@@ -91,168 +144,207 @@ const ResumeMatcherAI = () => {
       <div className="container mx-auto px-6 py-8">
         <div className="flex items-center gap-4 mb-8">
           <Link to="/hr/dashboard">
-            <Button variant="outline" size="sm" className="border-slate-600 text-slate-200 bg-slate-800 hover:bg-slate-700">
+            <Button variant="outline" size="sm" className="border-slate-600 text-slate-200">
               <ArrowLeft className="w-4 h-4 mr-2" />
-              Back
+              Back to Dashboard
             </Button>
           </Link>
           <div>
-            <h1 className="text-3xl font-bold text-white">AI Resume Matcher</h1>
-            <p className="text-slate-300 mt-2">Analyze resume compatibility with job requirements</p>
+            <h1 className="text-4xl font-bold text-white mb-2">AI Resume Matcher</h1>
+            <p className="text-slate-400">Analyze and match candidate resumes to job requirements using AI</p>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Input Section */}
-          <div className="space-y-6">
-            <Card className="bg-slate-800 border-slate-700">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Configuration Panel */}
+          <div className="lg:col-span-1">
+            <Card className="bg-slate-800/50 border-slate-700/50 backdrop-blur-sm">
               <CardHeader>
                 <CardTitle className="text-white flex items-center gap-2">
-                  <Brain className="h-5 w-5 text-blue-400" />
-                  Job Information
+                  <Sparkles className="h-5 w-5 text-purple-400" />
+                  Analysis Setup
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-6">
                 <div>
-                  <Label className="text-slate-200">Select Job (Optional)</Label>
-                  <Select value={selectedJobId} onValueChange={handleJobSelect}>
+                  <Label className="text-slate-200 mb-2 block">Select Job Position</Label>
+                  <Select value={selectedJob} onValueChange={setSelectedJob}>
                     <SelectTrigger className="bg-slate-700 border-slate-600 text-white">
-                      <SelectValue placeholder="Choose from existing jobs..." />
+                      <SelectValue placeholder="Choose a job posting" />
                     </SelectTrigger>
                     <SelectContent className="bg-slate-700 border-slate-600">
                       {jobs.map((job) => (
-                        <SelectItem key={job.id} value={job.id} className="text-white hover:bg-slate-600">
-                          {job.title} - {job.location}
+                        <SelectItem key={job.id} value={job.id} className="text-white">
+                          {job.title}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
 
-                <div>
-                  <Label htmlFor="jobRole" className="text-slate-200">Job Role *</Label>
-                  <Input
-                    id="jobRole"
-                    value={jobRole}
-                    onChange={(e) => setJobRole(e.target.value)}
-                    className="bg-slate-700 border-slate-600 text-white"
-                    placeholder="e.g. Senior React Developer"
-                  />
-                </div>
+                {selectedJob && (
+                  <div className="space-y-4">
+                    <div className="text-slate-300 text-sm">
+                      <p><strong>Applications found:</strong> {applications.length}</p>
+                      <p><strong>With resumes:</strong> {applications.filter(app => app.resume_url).length}</p>
+                    </div>
 
-                <div>
-                  <Label htmlFor="jobDescription" className="text-slate-200">Job Description *</Label>
-                  <Textarea
-                    id="jobDescription"
-                    value={jobDescription}
-                    onChange={(e) => setJobDescription(e.target.value)}
-                    className="bg-slate-700 border-slate-600 text-white min-h-32"
-                    placeholder="Paste the job description here..."
-                  />
-                </div>
+                    <Button
+                      onClick={handleAnalyzeResumes}
+                      disabled={analyzing || applications.length === 0}
+                      className="w-full bg-purple-600 hover:bg-purple-700"
+                    >
+                      {analyzing ? (
+                        <div className="flex items-center gap-2">
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          Analyzing...
+                        </div>
+                      ) : (
+                        <>
+                          <Sparkles className="w-4 h-4 mr-2" />
+                          Analyze Resumes
+                        </>
+                      )}
+                    </Button>
 
-                <div>
-                  <Label htmlFor="requirements" className="text-slate-200">Requirements *</Label>
-                  <Textarea
-                    id="requirements"
-                    value={requirements}
-                    onChange={(e) => setRequirements(e.target.value)}
-                    className="bg-slate-700 border-slate-600 text-white min-h-32"
-                    placeholder="List the job requirements..."
-                  />
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-slate-800 border-slate-700">
-              <CardHeader>
-                <CardTitle className="text-white flex items-center gap-2">
-                  <FileText className="h-5 w-5 text-green-400" />
-                  Resume Content
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div>
-                  <Label htmlFor="resumeText" className="text-slate-200">Resume Text *</Label>
-                  <Textarea
-                    id="resumeText"
-                    value={resumeText}
-                    onChange={(e) => setResumeText(e.target.value)}
-                    className="bg-slate-700 border-slate-600 text-white min-h-48"
-                    placeholder="Paste the resume content here..."
-                  />
-                </div>
-                
-                <Button 
-                  onClick={handleAnalyze}
-                  disabled={isAnalyzing}
-                  className="w-full mt-4 bg-blue-600 hover:bg-blue-700 text-white"
-                >
-                  {isAnalyzing ? (
-                    <>
-                      <Brain className="w-4 h-4 mr-2 animate-spin" />
-                      Analyzing...
-                    </>
-                  ) : (
-                    <>
-                      <BarChart3 className="w-4 h-4 mr-2" />
-                      Analyze Match
-                    </>
-                  )}
-                </Button>
+                    {analyzing && (
+                      <div className="space-y-2">
+                        <div className="flex justify-between text-sm text-slate-300">
+                          <span>Processing resumes...</span>
+                          <span>AI Analysis</span>
+                        </div>
+                        <Progress value={33} className="bg-slate-700" />
+                      </div>
+                    )}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
 
-          {/* Results Section */}
-          <div>
-            <Card className="bg-slate-800 border-slate-700">
+          {/* Results Panel */}
+          <div className="lg:col-span-2">
+            <Card className="bg-slate-800/50 border-slate-700/50 backdrop-blur-sm">
               <CardHeader>
-                <CardTitle className="text-white">Analysis Results</CardTitle>
+                <CardTitle className="text-white">
+                  {analysisResults.length > 0 ? 'Analysis Results' : 'Available Resumes'}
+                </CardTitle>
               </CardHeader>
               <CardContent>
-                {analysisResult ? (
-                  <div className="space-y-6">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="text-center p-4 bg-slate-700 rounded-lg">
-                        <div className="text-3xl font-bold text-blue-400">{analysisResult.overallMatch}%</div>
-                        <div className="text-slate-300">Overall Match</div>
+                {loading ? (
+                  <div className="text-center py-8">
+                    <div className="text-slate-400">Loading applications...</div>
+                  </div>
+                ) : applications.length === 0 && selectedJob ? (
+                  <div className="text-center py-12">
+                    <FileText className="h-16 w-16 text-slate-600 mx-auto mb-4" />
+                    <h3 className="text-xl font-medium text-slate-400 mb-2">No resumes found</h3>
+                    <p className="text-slate-500">No applications with resumes for this job position.</p>
+                  </div>
+                ) : !selectedJob ? (
+                  <div className="text-center py-12">
+                    <Upload className="h-16 w-16 text-slate-600 mx-auto mb-4" />
+                    <h3 className="text-xl font-medium text-slate-400 mb-2">Select a Job Position</h3>
+                    <p className="text-slate-500">Choose a job posting to view and analyze candidate resumes.</p>
+                  </div>
+                ) : analysisResults.length > 0 ? (
+                  <div className="space-y-4">
+                    {analysisResults.map((result, index) => (
+                      <div key={result.applicationId} className="border border-slate-600 rounded-lg p-4 hover:bg-slate-700/30 transition-colors">
+                        <div className="flex justify-between items-start mb-3">
+                          <div>
+                            <h3 className="font-semibold text-white text-lg">{result.candidateName}</h3>
+                            <Badge className={`${getScoreBadgeColor(result.matchScore)} border mt-1`}>
+                              {result.matchScore}% Match
+                            </Badge>
+                          </div>
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="border-slate-600 text-slate-200"
+                              onClick={() => {
+                                const app = applications.find(a => a.id === result.applicationId);
+                                if (app) handleDownloadResume(app);
+                              }}
+                            >
+                              <Download className="h-4 w-4 mr-1" />
+                              Resume
+                            </Button>
+                            <Link to={`/hr/candidates/${result.applicationId}`}>
+                              <Button size="sm" className="bg-blue-600 hover:bg-blue-700">
+                                <Eye className="h-4 w-4 mr-1" />
+                                View Profile
+                              </Button>
+                            </Link>
+                          </div>
+                        </div>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                          <div>
+                            <h4 className="font-medium text-green-400 mb-2">Key Strengths</h4>
+                            <ul className="text-slate-300 space-y-1">
+                              {result.keyStrengths.map((strength: string, i: number) => (
+                                <li key={i} className="flex items-center gap-2">
+                                  <div className="w-1 h-1 bg-green-400 rounded-full" />
+                                  {strength}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                          
+                          <div>
+                            <h4 className="font-medium text-yellow-400 mb-2">Areas for Development</h4>
+                            <ul className="text-slate-300 space-y-1">
+                              {result.gaps.map((gap: string, i: number) => (
+                                <li key={i} className="flex items-center gap-2">
+                                  <div className="w-1 h-1 bg-yellow-400 rounded-full" />
+                                  {gap}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        </div>
+                        
+                        <div className="mt-3 pt-3 border-t border-slate-600">
+                          <p className="text-slate-300 text-sm">
+                            <strong className="text-purple-400">Recommendation:</strong> {result.recommendation}
+                          </p>
+                        </div>
                       </div>
-                      <div className="text-center p-4 bg-slate-700 rounded-lg">
-                        <div className="text-3xl font-bold text-green-400">{analysisResult.skillsMatch}%</div>
-                        <div className="text-slate-300">Skills Match</div>
-                      </div>
-                    </div>
-
-                    <div className="space-y-4">
-                      <div>
-                        <h4 className="font-semibold text-white mb-2">Strengths</h4>
-                        <ul className="space-y-1">
-                          {analysisResult.strengths.map((strength: string, index: number) => (
-                            <li key={index} className="text-green-400 text-sm">• {strength}</li>
-                          ))}
-                        </ul>
-                      </div>
-
-                      <div>
-                        <h4 className="font-semibold text-white mb-2">Areas for Improvement</h4>
-                        <ul className="space-y-1">
-                          {analysisResult.gaps.map((gap: string, index: number) => (
-                            <li key={index} className="text-yellow-400 text-sm">• {gap}</li>
-                          ))}
-                        </ul>
-                      </div>
-
-                      <div>
-                        <h4 className="font-semibold text-white mb-2">Recommendation</h4>
-                        <p className="text-slate-300 text-sm">{analysisResult.recommendation}</p>
-                      </div>
-                    </div>
+                    ))}
                   </div>
                 ) : (
-                  <div className="text-center py-12">
-                    <Brain className="h-16 w-16 text-slate-600 mx-auto mb-4" />
-                    <p className="text-slate-400">Upload job requirements and resume to see analysis results</p>
+                  <div className="space-y-4">
+                    {applications.map((application) => (
+                      <div key={application.id} className="flex justify-between items-center p-4 border border-slate-600 rounded-lg hover:bg-slate-700/30 transition-colors">
+                        <div>
+                          <h3 className="font-semibold text-white">{application.candidate?.full_name || 'Unknown Candidate'}</h3>
+                          <p className="text-slate-400 text-sm">Applied: {new Date(application.applied_at).toLocaleDateString()}</p>
+                          {application.resume_filename && (
+                            <p className="text-slate-500 text-xs mt-1">Resume: {application.resume_filename}</p>
+                          )}
+                        </div>
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="border-slate-600 text-slate-200"
+                            onClick={() => handleDownloadResume(application)}
+                            disabled={!application.resume_url}
+                          >
+                            <Download className="h-4 w-4 mr-1" />
+                            Resume
+                          </Button>
+                          <Link to={`/hr/candidates/${application.id}`}>
+                            <Button size="sm" className="bg-blue-600 hover:bg-blue-700">
+                              <Eye className="h-4 w-4 mr-1" />
+                              View
+                            </Button>
+                          </Link>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 )}
               </CardContent>

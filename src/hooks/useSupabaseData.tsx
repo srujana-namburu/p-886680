@@ -38,6 +38,15 @@ export const useApplications = (filters?: { status?: ApplicationStatus; jobId?: 
   });
 };
 
+export const useApplication = (id: string) => {
+  return useQuery({
+    queryKey: ['application', id],
+    queryFn: () => applicationService.getApplicationById(id),
+    enabled: !!id,
+    staleTime: 2 * 60 * 1000,
+  });
+};
+
 export const useUserApplications = () => {
   const { user } = useAuth();
   
@@ -127,6 +136,7 @@ export const useRealtimeApplications = () => {
       // Invalidate related queries
       queryClient.invalidateQueries({ queryKey: ['applications'] });
       queryClient.invalidateQueries({ queryKey: ['application-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['application'] });
     });
 
     return () => {
