@@ -1,9 +1,10 @@
+
 import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Mail, Phone, Download, MessageSquare, MapPin, Calendar, Briefcase } from "lucide-react";
+import { ArrowLeft, Mail, Phone, Download, MessageSquare, MapPin, Calendar, Briefcase, FileText, Eye } from "lucide-react";
 import { Link, useParams } from "react-router-dom";
 import { applicationService, resumeService } from "@/services/supabaseService";
 import { useToast } from "@/hooks/use-toast";
@@ -59,31 +60,29 @@ const CandidateProfile = () => {
   };
 
   const handleDownloadResume = async () => {
-    if (!application?.resume_url) return;
+    if (!application?.resume_url) {
+      toast({
+        title: "Error",
+        description: "No resume available for download.",
+        variant: "destructive",
+      });
+      return;
+    }
 
     try {
-      // Extract file path from URL
-      const url = new URL(application.resume_url);
-      const filePath = url.pathname.split('/').pop();
+      // Create a download link
+      const link = document.createElement('a');
+      link.href = application.resume_url;
+      link.download = application.resume_filename || 'resume.pdf';
+      link.target = '_blank';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
       
-      if (filePath) {
-        const blob = await resumeService.downloadResume(filePath);
-        if (blob) {
-          const url = window.URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = application.resume_filename || 'resume.pdf';
-          document.body.appendChild(a);
-          a.click();
-          window.URL.revokeObjectURL(url);
-          document.body.removeChild(a);
-          
-          toast({
-            title: "Success",
-            description: "Resume downloaded successfully.",
-          });
-        }
-      }
+      toast({
+        title: "Success",
+        description: "Resume download started.",
+      });
     } catch (error) {
       console.error('Error downloading resume:', error);
       toast({
@@ -92,6 +91,20 @@ const CandidateProfile = () => {
         variant: "destructive",
       });
     }
+  };
+
+  const handleViewResume = () => {
+    if (!application?.resume_url) {
+      toast({
+        title: "Error",
+        description: "No resume available to view.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Open resume in new tab
+    window.open(application.resume_url, '_blank');
   };
 
   const getStatusColor = (status: string) => {
@@ -253,14 +266,28 @@ const CandidateProfile = () => {
                 <CardTitle className="text-white">Actions</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                {application.resume_url && (
-                  <Button 
-                    className="w-full bg-blue-600 hover:bg-blue-700"
-                    onClick={handleDownloadResume}
-                  >
-                    <Download className="w-4 h-4 mr-2" />
-                    Download Resume
-                  </Button>
+                {application.resume_url ? (
+                  <>
+                    <Button 
+                      className="w-full bg-green-600 hover:bg-green-700"
+                      onClick={handleViewResume}
+                    >
+                      <Eye className="w-4 h-4 mr-2" />
+                      View Resume
+                    </Button>
+                    <Button 
+                      className="w-full bg-blue-600 hover:bg-blue-700"
+                      onClick={handleDownloadResume}
+                    >
+                      <Download className="w-4 h-4 mr-2" />
+                      Download Resume
+                    </Button>
+                  </>
+                ) : (
+                  <div className="text-center py-4">
+                    <FileText className="h-8 w-8 text-slate-600 mx-auto mb-2" />
+                    <p className="text-slate-400 text-sm">No resume uploaded</p>
+                  </div>
                 )}
                 <Button variant="outline" className="w-full border-slate-600 text-slate-200">
                   <MessageSquare className="w-4 h-4 mr-2" />

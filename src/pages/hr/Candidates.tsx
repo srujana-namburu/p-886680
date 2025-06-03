@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Filter, Mail, Phone, MapPin, Calendar, Download, Eye, Star, CheckCircle, Users } from "lucide-react";
+import { Search, Filter, Mail, Phone, MapPin, Calendar, Download, Eye, Star, CheckCircle, Users, FileText } from "lucide-react";
 import { Link } from "react-router-dom";
 import HRNav from "@/components/HRNav";
 import { useApplications, useRealtimeApplications } from "@/hooks/useSupabaseData";
@@ -21,7 +21,7 @@ const HRCandidates = () => {
   // Set up real-time updates
   useRealtimeApplications();
   
-  // Fetch applications from database
+  // Fetch applications from database - RLS will automatically filter by HR's jobs
   const { data: applications = [], isLoading, error, refetch } = useApplications();
 
   const getStatusColor = (status: string) => {
@@ -71,6 +71,54 @@ const HRCandidates = () => {
         variant: "destructive",
       });
     }
+  };
+
+  const handleDownloadResume = async (application: any) => {
+    if (!application.resume_url) {
+      toast({
+        title: "Error",
+        description: "No resume available for download.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      // Create a download link
+      const link = document.createElement('a');
+      link.href = application.resume_url;
+      link.download = application.resume_filename || 'resume.pdf';
+      link.target = '_blank';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      toast({
+        title: "Success",
+        description: "Resume download started.",
+      });
+    } catch (error) {
+      console.error('Error downloading resume:', error);
+      toast({
+        title: "Error",
+        description: "Failed to download resume.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleViewResume = (application: any) => {
+    if (!application.resume_url) {
+      toast({
+        title: "Error",
+        description: "No resume available to view.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Open resume in new tab
+    window.open(application.resume_url, '_blank');
   };
 
   if (isLoading) {
@@ -173,7 +221,12 @@ const HRCandidates = () => {
                             <span className="text-sm text-slate-300">{application.rating || 'N/A'}</span>
                           </div>
                         </h3>
-                        <p className="text-lg text-blue-400 font-medium">{application.job?.title || 'Unknown Position'}</p>
+                        <p className="text-lg text-blue-400 font-medium mb-1">
+                          Applied for: {application.job?.title || 'Unknown Position'}
+                        </p>
+                        <p className="text-sm text-slate-400">
+                          {application.job?.location} • {application.job?.job_type}
+                        </p>
                       </div>
                     </div>
                     
@@ -222,12 +275,28 @@ const HRCandidates = () => {
                         </SelectContent>
                       </Select>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 flex-wrap">
                       {application.resume_url && (
-                        <Button size="sm" variant="outline" className="border-slate-600 text-slate-200 hover:bg-slate-700">
-                          <Download className="h-4 w-4 mr-1" />
-                          Resume
-                        </Button>
+                        <>
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
+                            className="border-slate-600 text-slate-200 hover:bg-slate-700"
+                            onClick={() => handleViewResume(application)}
+                          >
+                            <FileText className="h-4 w-4 mr-1" />
+                            View Resume
+                          </Button>
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
+                            className="border-slate-600 text-slate-200 hover:bg-slate-700"
+                            onClick={() => handleDownloadResume(application)}
+                          >
+                            <Download className="h-4 w-4 mr-1" />
+                            Download
+                          </Button>
+                        </>
                       )}
                       <Link to={`/hr/candidates/${application.id}`}>
                         <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white">
@@ -247,7 +316,12 @@ const HRCandidates = () => {
           <div className="text-center py-12">
             <Users className="h-16 w-16 text-slate-600 mx-auto mb-4" />
             <h3 className="text-xl font-medium text-slate-400 mb-2">No candidates found</h3>
-            <p className="text-slate-500">Try adjusting your search or filters</p>
+            <p className="text-slate-500">
+              {applications.length === 0 
+                ? "No candidates have applied to your job postings yet" 
+                : "Try adjusting your search or filters"
+              }
+            </p>
           </div>
         )}
       </div>
