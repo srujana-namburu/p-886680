@@ -1,22 +1,27 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Download, FileText, Star, Users } from "lucide-react";
+import { Download, FileText, Star, Users, Upload, X } from "lucide-react";
 import { useAllJobs } from "@/hooks/useSupabaseData";
-import { applicationService } from "@/services/supabaseService";
+import { applicationService, resumeService } from "@/services/supabaseService";
+import { useToast } from "@/hooks/use-toast";
 import type { JobPosting, Application } from "@/types/database";
 
 const ResumeMatcherForm = () => {
   const [selectedJob, setSelectedJob] = useState<JobPosting | null>(null);
   const [jobApplications, setJobApplications] = useState<Application[]>([]);
+  const [uploadedResumes, setUploadedResumes] = useState<File[]>([]);
   const [loading, setLoading] = useState(false);
   const [jobDescription, setJobDescription] = useState('');
   const [requirements, setRequirements] = useState('');
   const [responsibilities, setResponsibilities] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { toast } = useToast();
   
   const { data: jobs = [] } = useAllJobs();
 
@@ -34,27 +39,92 @@ const ResumeMatcherForm = () => {
         setJobApplications(applications);
       } catch (error) {
         console.error('Error fetching job applications:', error);
+        toast({
+          title: "Error",
+          description: "Failed to fetch job applications.",
+          variant: "destructive",
+        });
       } finally {
         setLoading(false);
       }
     }
   };
 
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files || []);
+    const resumeFiles = files.filter(file => 
+      file.type === 'application/pdf' || 
+      file.type === 'application/msword' || 
+      file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    );
+    
+    if (resumeFiles.length !== files.length) {
+      toast({
+        title: "Warning",
+        description: "Some files were skipped. Only PDF and Word documents are allowed.",
+        variant: "destructive",
+      });
+    }
+    
+    setUploadedResumes(prev => [...prev, ...resumeFiles]);
+  };
+
+  const removeUploadedResume = (index: number) => {
+    setUploadedResumes(prev => prev.filter((_, i) => i !== index));
+  };
+
   const handleDownloadResume = async (application: Application) => {
-    if (!application.resume_url) return;
+    if (!application.resume_url) {
+      toast({
+        title: "Error",
+        description: "No resume available for download.",
+        variant: "destructive",
+      });
+      return;
+    }
 
     try {
-      // Create a download link
+      const response = await fetch(application.resume_url);
+      if (!response.ok) {
+        throw new Error('Failed to fetch resume');
+      }
+      
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
-      link.href = application.resume_url;
-      link.download = application.resume_filename || 'resume.pdf';
-      link.target = '_blank';
+      link.href = url;
+      link.download = application.resume_filename || `resume_${application.candidate?.full_name || 'candidate'}.pdf`;
       document.body.appendChild(link);
       link.click();
+      
       document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      
+      toast({
+        title: "Success",
+        description: "Resume download started.",
+      });
     } catch (error) {
       console.error('Error downloading resume:', error);
+      toast({
+        title: "Error",
+        description: "Failed to download resume.",
+        variant: "destructive",
+      });
     }
+  };
+
+  const handleViewResume = (application: Application) => {
+    if (!application.resume_url) {
+      toast({
+        title: "Error",
+        description: "No resume available to view.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    window.open(application.resume_url, '_blank', 'noopener,noreferrer');
   };
 
   const canAnalyze = jobDescription.trim() && requirements.trim() && responsibilities.trim();
@@ -125,6 +195,52 @@ const ResumeMatcherForm = () => {
             </div>
           </div>
 
+          {/* Resume Upload Section */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <label className="text-slate-200 text-sm font-medium">Upload Additional Resumes</label>
+              <Button
+                type="button"
+                variant="outline"
+                className="border-slate-600 text-slate-200 hover:bg-slate-700 bg-slate-800"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <Upload className="w-4 h-4 mr-2" />
+                Upload Resumes
+              </Button>
+            </div>
+            
+            <Input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              accept=".pdf,.doc,.docx"
+              onChange={handleFileUpload}
+              className="hidden"
+            />
+
+            {uploadedResumes.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-slate-300 text-sm">Uploaded Resumes ({uploadedResumes.length}):</p>
+                <div className="grid gap-2">
+                  {uploadedResumes.map((file, index) => (
+                    <div key={index} className="flex items-center justify-between p-2 bg-slate-700/30 rounded-lg border border-slate-600/50">
+                      <span className="text-slate-200 text-sm">{file.name}</span>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="text-red-400 hover:text-red-300 hover:bg-red-500/10 p-1"
+                        onClick={() => removeUploadedResume(index)}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
           {/* AI Analysis Button */}
           <div className="text-center">
             <Button 
@@ -150,7 +266,7 @@ const ResumeMatcherForm = () => {
             <CardTitle className="text-white flex items-center gap-2">
               <Users className="h-5 w-5" />
               Candidates for {selectedJob.title}
-              <Badge variant="secondary" className="ml-2">
+              <Badge variant="secondary" className="ml-2 bg-slate-700 text-slate-200">
                 {jobApplications.length} resumes
               </Badge>
             </CardTitle>
@@ -192,18 +308,20 @@ const ResumeMatcherForm = () => {
                         <Button
                           size="sm"
                           variant="outline"
-                          className="border-slate-600 text-slate-200 hover:bg-slate-700"
+                          className="border-slate-600 text-slate-200 hover:bg-slate-700 bg-slate-800"
+                          onClick={() => handleViewResume(application)}
+                        >
+                          <FileText className="h-4 w-4 mr-1" />
+                          View
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="border-slate-600 text-slate-200 hover:bg-slate-700 bg-slate-800"
                           onClick={() => handleDownloadResume(application)}
                         >
                           <Download className="h-4 w-4 mr-1" />
                           Download
-                        </Button>
-                        <Button
-                          size="sm"
-                          className="bg-blue-600 hover:bg-blue-700 text-white"
-                        >
-                          <FileText className="h-4 w-4 mr-1" />
-                          View
                         </Button>
                       </div>
                     </div>

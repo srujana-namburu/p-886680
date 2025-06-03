@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Filter, Mail, Phone, MapPin, Calendar, Download, Eye, Star, CheckCircle, Users, FileText } from "lucide-react";
+import { Search, Filter, Mail, Phone, MapPin, Calendar, Download, Eye, Star, CheckCircle, Users } from "lucide-react";
 import { Link } from "react-router-dom";
 import HRNav from "@/components/HRNav";
 import { useApplications, useRealtimeApplications } from "@/hooks/useSupabaseData";
@@ -62,7 +62,7 @@ const HRCandidates = () => {
         title: "Success",
         description: "Application status updated successfully.",
       });
-      refetch(); // Refresh the data
+      refetch();
     } catch (error) {
       console.error('Error updating application status:', error);
       toast({
@@ -84,14 +84,25 @@ const HRCandidates = () => {
     }
 
     try {
-      // Create a download link
+      // Fetch the file content from the URL
+      const response = await fetch(application.resume_url);
+      if (!response.ok) {
+        throw new Error('Failed to fetch resume');
+      }
+      
+      const blob = await response.blob();
+      
+      // Create download link
+      const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
-      link.href = application.resume_url;
-      link.download = application.resume_filename || 'resume.pdf';
-      link.target = '_blank';
+      link.href = url;
+      link.download = application.resume_filename || `resume_${application.candidate?.full_name || 'candidate'}.pdf`;
       document.body.appendChild(link);
       link.click();
+      
+      // Cleanup
       document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
       
       toast({
         title: "Success",
@@ -101,7 +112,7 @@ const HRCandidates = () => {
       console.error('Error downloading resume:', error);
       toast({
         title: "Error",
-        description: "Failed to download resume.",
+        description: "Failed to download resume. Please try again.",
         variant: "destructive",
       });
     }
@@ -117,8 +128,8 @@ const HRCandidates = () => {
       return;
     }
 
-    // Open resume in new tab
-    window.open(application.resume_url, '_blank');
+    // Open resume in new tab for viewing
+    window.open(application.resume_url, '_blank', 'noopener,noreferrer');
   };
 
   if (isLoading) {
@@ -170,7 +181,7 @@ const HRCandidates = () => {
                 className="pl-10 bg-slate-800/50 border-slate-700 text-white placeholder:text-slate-400 focus:border-blue-500"
               />
             </div>
-            <Button variant="outline" className="border-slate-600 text-slate-200 hover:bg-slate-700">
+            <Button variant="outline" className="border-slate-600 text-slate-200 hover:bg-slate-700 bg-slate-800">
               <Filter className="w-4 h-4 mr-2" />
               Advanced Filters
             </Button>
@@ -184,8 +195,8 @@ const HRCandidates = () => {
                 variant={statusFilter === status ? "default" : "outline"}
                 className={`${
                   statusFilter === status 
-                    ? "bg-blue-500 text-white" 
-                    : "border-slate-600 text-slate-300 hover:bg-slate-700"
+                    ? "bg-blue-500 text-white hover:bg-blue-600" 
+                    : "border-slate-600 text-slate-300 hover:bg-slate-700 bg-slate-800"
                 }`}
                 onClick={() => setStatusFilter(status)}
               >
@@ -275,7 +286,7 @@ const HRCandidates = () => {
                           <Button 
                             size="sm" 
                             variant="outline" 
-                            className="border-slate-600 text-slate-200 hover:bg-slate-700"
+                            className="border-slate-600 text-slate-200 hover:bg-slate-700 bg-slate-800"
                             onClick={() => handleViewResume(application)}
                           >
                             <Eye className="h-4 w-4 mr-1" />
@@ -284,7 +295,7 @@ const HRCandidates = () => {
                           <Button 
                             size="sm" 
                             variant="outline" 
-                            className="border-slate-600 text-slate-200 hover:bg-slate-700"
+                            className="border-slate-600 text-slate-200 hover:bg-slate-700 bg-slate-800"
                             onClick={() => handleDownloadResume(application)}
                           >
                             <Download className="h-4 w-4 mr-1" />

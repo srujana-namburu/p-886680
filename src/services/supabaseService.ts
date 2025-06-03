@@ -699,6 +699,66 @@ export const notificationService = {
       return 0;
     }
     return count || 0;
+  },
+
+  async createNotification(notification: {
+    user_id: string;
+    title: string;
+    message: string;
+    type: string;
+    related_application_id?: string;
+    related_job_id?: string;
+    action_url?: string;
+  }): Promise<Notification | null> {
+    const { data, error } = await supabase
+      .from('notifications')
+      .insert(notification)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error creating notification:', error);
+      return null;
+    }
+    return data;
+  }
+};
+
+// Job Seeker Chat Transcript Services
+export const jobSeekerChatService = {
+  async saveTranscript(transcriptData: any): Promise<any> {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return null;
+
+    const { data, error } = await supabase
+      .from('jobseeker_chat_transcripts')
+      .insert({
+        user_id: user.id,
+        transcript_data: transcriptData,
+        completed_at: new Date().toISOString()
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error saving chat transcript:', error);
+      return null;
+    }
+    return data;
+  },
+
+  async getUserTranscripts(userId: string): Promise<any[]> {
+    const { data, error } = await supabase
+      .from('jobseeker_chat_transcripts')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching chat transcripts:', error);
+      return [];
+    }
+    return data || [];
   }
 };
 
