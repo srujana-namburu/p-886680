@@ -97,6 +97,7 @@ export const useSystemSettings = () => {
 export const useNotifications = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const [subscriptionSetup, setSubscriptionSetup] = useState(false);
   
   const notificationsQuery = useQuery({
     queryKey: ['notifications', user?.id],
@@ -112,10 +113,12 @@ export const useNotifications = () => {
     staleTime: 30 * 1000, // 30 seconds
   });
 
-  // Set up real-time subscription for notifications
+  // Set up real-time subscription for notifications only once
   useEffect(() => {
-    if (!user) return;
+    if (!user || subscriptionSetup) return;
 
+    console.log('Setting up notification subscription for user:', user.id);
+    
     const subscription = realtimeService.subscribeToNotifications(user.id, (payload) => {
       console.log('Notification update:', payload);
       // Invalidate queries to refetch data
@@ -123,10 +126,14 @@ export const useNotifications = () => {
       queryClient.invalidateQueries({ queryKey: ['unread-notifications', user.id] });
     });
 
+    setSubscriptionSetup(true);
+
     return () => {
+      console.log('Cleaning up notification subscription');
       subscription.unsubscribe();
+      setSubscriptionSetup(false);
     };
-  }, [user, queryClient]);
+  }, [user?.id, queryClient, subscriptionSetup]);
 
   return {
     notifications: notificationsQuery,
@@ -137,8 +144,13 @@ export const useNotifications = () => {
 // Real-time Applications Hook
 export const useRealtimeApplications = () => {
   const queryClient = useQueryClient();
+  const [subscriptionSetup, setSubscriptionSetup] = useState(false);
 
   useEffect(() => {
+    if (subscriptionSetup) return;
+
+    console.log('Setting up applications subscription');
+    
     const subscription = realtimeService.subscribeToApplications((payload) => {
       console.log('Application update:', payload);
       // Invalidate related queries
@@ -148,8 +160,12 @@ export const useRealtimeApplications = () => {
       queryClient.invalidateQueries({ queryKey: ['user-applications'] });
     });
 
+    setSubscriptionSetup(true);
+
     return () => {
+      console.log('Cleaning up applications subscription');
       subscription.unsubscribe();
+      setSubscriptionSetup(false);
     };
-  }, [queryClient]);
+  }, [queryClient, subscriptionSetup]);
 };
