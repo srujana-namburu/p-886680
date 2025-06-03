@@ -1,14 +1,15 @@
 
-import { useState, useEffect } from "react";
+import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import JobSeekerNav from "@/components/JobSeekerNav";
-import JobApplicationModal from "@/components/JobApplicationModal";
 import AIChat from "@/components/AIChat";
+import { useJobs, useUserApplications } from "@/hooks/useSupabaseData";
+import { applicationService } from "@/services/supabaseService";
+import { useAuth } from "@/hooks/useAuth";
 import { 
   Search, 
   MapPin, 
@@ -22,131 +23,169 @@ import {
   Eye,
   Briefcase,
   Users,
-  Star
+  Star,
+  Upload,
+  FileText
 } from "lucide-react";
 
-interface Job {
-  id: string;
-  title: string;
-  company: string;
-  location: string;
-  type: string;
-  salary: string;
-  postedDate: string;
-  description: string;
-  requirements: string[];
-  benefits: string[];
-  experience: string;
-  isExpanded?: boolean;
-  isSaved?: boolean;
-}
-
 const JobSeekerDashboard = () => {
-  const navigate = useNavigate();
   const { toast } = useToast();
+  const { user } = useAuth();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedJob, setSelectedJob] = useState<Job | null>(null);
-  const [showApplicationModal, setShowApplicationModal] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
-  const [jobs, setJobs] = useState<Job[]>([]);
+  const [expandedJobs, setExpandedJobs] = useState<Set<string>>(new Set());
+  const [applyingToJob, setApplyingToJob] = useState<string | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [coverLetter, setCoverLetter] = useState("");
+  const [showApplicationModal, setShowApplicationModal] = useState(false);
+  const [currentJob, setCurrentJob] = useState<any>(null);
+  
   const [filters, setFilters] = useState({
     jobType: "",
     experience: "",
-    salary: { min: 0, max: 200000 },
     location: ""
   });
 
-  // Mock job data - In real app, this would come from API
-  useEffect(() => {
-    const mockJobs: Job[] = [
-      {
-        id: "1",
-        title: "Senior Frontend Developer",
-        company: "TechCorp Solutions",
-        location: "San Francisco, CA",
-        type: "Full-time",
-        salary: "$120,000 - $150,000",
-        postedDate: "2 days ago",
-        description: "Join our innovative team building next-generation web applications. We're looking for a passionate frontend developer who loves creating amazing user experiences.",
-        requirements: ["React", "TypeScript", "CSS/SCSS", "5+ years experience"],
-        benefits: ["Health Insurance", "401k", "Remote Work", "Stock Options"],
-        experience: "Senior"
-      },
-      {
-        id: "2",
-        title: "UX/UI Designer",
-        company: "Design Studio Pro",
-        location: "New York, NY",
-        type: "Full-time",
-        salary: "$85,000 - $110,000",
-        postedDate: "1 week ago",
-        description: "Create beautiful and intuitive user interfaces that delight our customers. Work closely with product and engineering teams.",
-        requirements: ["Figma", "Adobe Creative Suite", "Prototyping", "3+ years experience"],
-        benefits: ["Health Insurance", "Flexible Hours", "Design Budget", "PTO"],
-        experience: "Mid-level"
-      },
-      {
-        id: "3",
-        title: "Data Scientist",
-        company: "AI Innovations Inc",
-        location: "Austin, TX",
-        type: "Full-time",
-        salary: "$100,000 - $130,000",
-        postedDate: "3 days ago",
-        description: "Analyze complex datasets to drive business decisions. Build machine learning models and create data visualizations.",
-        requirements: ["Python", "SQL", "Machine Learning", "Statistics", "4+ years experience"],
-        benefits: ["Health Insurance", "Research Budget", "Conference Travel", "Stock Options"],
-        experience: "Senior"
-      },
-      {
-        id: "4",
-        title: "Marketing Manager",
-        company: "Growth Marketing Co",
-        location: "Remote",
-        type: "Full-time",
-        salary: "$70,000 - $90,000",
-        postedDate: "5 days ago",
-        description: "Lead our marketing efforts across digital channels. Develop strategies to increase brand awareness and drive growth.",
-        requirements: ["Digital Marketing", "Analytics", "Content Strategy", "3+ years experience"],
-        benefits: ["Health Insurance", "Remote Work", "Marketing Budget", "Professional Development"],
-        experience: "Mid-level"
-      }
-    ];
-    setJobs(mockJobs);
-  }, []);
+  // Fetch real data from database
+  const { data: jobs = [], isLoading: jobsLoading, error: jobsError } = useJobs();
+  const { data: userApplications = [] } = useUserApplications();
 
   const toggleJobExpansion = (jobId: string) => {
-    setJobs(jobs.map(job => 
-      job.id === jobId ? { ...job, isExpanded: !job.isExpanded } : job
-    ));
+    const newExpanded = new Set(expandedJobs);
+    if (newExpanded.has(jobId)) {
+      newExpanded.delete(jobId);
+    } else {
+      newExpanded.add(jobId);
+    }
+    setExpandedJobs(newExpanded);
   };
 
-  const handleApplyToJob = (job: Job) => {
-    setSelectedJob(job);
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      if (file.type !== 'application/pdf') {
+        toast({
+          title: "Invalid file type",
+          description: "Please upload a PDF file.",
+          variant: "destructive",
+        });
+        return;
+      }
+      if (file.size > 5 * 1024 * 1024) { // 5MB limit
+        toast({
+          title: "File too large",
+          description: "Please upload a file smaller than 5MB.",
+          variant: "destructive",
+        });
+        return;
+      }
+      setSelectedFile(file);
+    }
+  };
+
+  const handleApplyToJob = (job: any) => {
+    if (!user) {
+      toast({
+        title: "Authentication required",
+        description: "Please login to apply for jobs.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Check if already applied
+    const hasApplied = userApplications.some(app => app.job_id === job.id);
+    if (hasApplied) {
+      toast({
+        title: "Already applied",
+        description: "You have already applied to this job.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setCurrentJob(job);
     setShowApplicationModal(true);
   };
 
-  const handleSaveJob = (jobId: string) => {
-    setJobs(jobs.map(job => 
-      job.id === jobId ? { ...job, isSaved: !job.isSaved } : job
-    ));
-    toast({
-      title: "Job Saved!",
-      description: "Job has been added to your saved jobs.",
-    });
+  const submitApplication = async () => {
+    if (!currentJob || !user) return;
+
+    setApplyingToJob(currentJob.id);
+
+    try {
+      // For now, we'll save the application without file upload
+      // In a real app, you'd upload the file to Supabase Storage first
+      const applicationData = {
+        job_id: currentJob.id,
+        cover_letter: coverLetter,
+        resume_filename: selectedFile?.name,
+        // resume_url would be set after file upload
+      };
+
+      const result = await applicationService.createApplication(applicationData);
+
+      if (result) {
+        toast({
+          title: "Application submitted!",
+          description: "Your application has been submitted successfully.",
+        });
+        setShowApplicationModal(false);
+        setCoverLetter("");
+        setSelectedFile(null);
+        setCurrentJob(null);
+      } else {
+        throw new Error('Failed to submit application');
+      }
+    } catch (error) {
+      console.error('Error submitting application:', error);
+      toast({
+        title: "Error",
+        description: "Failed to submit application. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setApplyingToJob(null);
+    }
   };
 
   const filteredJobs = jobs.filter(job => {
     const matchesSearch = job.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         job.company.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          job.location.toLowerCase().includes(searchTerm.toLowerCase());
     
-    const matchesType = !filters.jobType || job.type === filters.jobType;
-    const matchesExperience = !filters.experience || job.experience === filters.experience;
+    const matchesType = !filters.jobType || job.job_type === filters.jobType;
+    const matchesExperience = !filters.experience || job.experience_level === filters.experience;
     const matchesLocation = !filters.location || job.location.toLowerCase().includes(filters.location.toLowerCase());
     
     return matchesSearch && matchesType && matchesExperience && matchesLocation;
   });
+
+  if (jobsLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900">
+        <JobSeekerNav />
+        <div className="container mx-auto px-6 py-8">
+          <div className="flex justify-center items-center h-64">
+            <div className="text-white text-lg">Loading jobs...</div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (jobsError) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900">
+        <JobSeekerNav />
+        <div className="container mx-auto px-6 py-8">
+          <div className="flex justify-center items-center h-64">
+            <div className="text-red-400 text-lg">Error loading jobs. Please try again later.</div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900">
@@ -194,10 +233,10 @@ const JobSeekerDashboard = () => {
                         className="w-full h-10 bg-white/10 border-white/20 text-white rounded-md px-3"
                       >
                         <option value="">All Types</option>
-                        <option value="Full-time">Full-time</option>
-                        <option value="Part-time">Part-time</option>
-                        <option value="Contract">Contract</option>
-                        <option value="Remote">Remote</option>
+                        <option value="full-time">Full-time</option>
+                        <option value="part-time">Part-time</option>
+                        <option value="contract">Contract</option>
+                        <option value="remote">Remote</option>
                       </select>
                     </div>
                     <div>
@@ -208,10 +247,10 @@ const JobSeekerDashboard = () => {
                         className="w-full h-10 bg-white/10 border-white/20 text-white rounded-md px-3"
                       >
                         <option value="">All Levels</option>
-                        <option value="Entry-level">Entry-level</option>
-                        <option value="Mid-level">Mid-level</option>
-                        <option value="Senior">Senior</option>
-                        <option value="Executive">Executive</option>
+                        <option value="entry-level">Entry-level</option>
+                        <option value="mid-level">Mid-level</option>
+                        <option value="senior">Senior</option>
+                        <option value="executive">Executive</option>
                       </select>
                     </div>
                     <div>
@@ -227,7 +266,7 @@ const JobSeekerDashboard = () => {
                       <Button
                         variant="outline"
                         className="w-full border-slate-400/30 text-slate-300 hover:bg-slate-500/10"
-                        onClick={() => setFilters({jobType: "", experience: "", salary: {min: 0, max: 200000}, location: ""})}
+                        onClick={() => setFilters({jobType: "", experience: "", location: ""})}
                       >
                         Clear All
                       </Button>
@@ -251,132 +290,124 @@ const JobSeekerDashboard = () => {
           <Card className="bg-white/5 border-white/10 backdrop-blur-lg hover:bg-white/10 transition-all duration-300">
             <CardContent className="p-6 text-center">
               <Building className="h-8 w-8 text-emerald-400 mx-auto mb-2" />
-              <div className="text-2xl font-bold text-white">150+</div>
-              <div className="text-slate-300 text-sm">Companies</div>
+              <div className="text-2xl font-bold text-white">{userApplications.length}</div>
+              <div className="text-slate-300 text-sm">Your Applications</div>
             </CardContent>
           </Card>
           <Card className="bg-white/5 border-white/10 backdrop-blur-lg hover:bg-white/10 transition-all duration-300">
             <CardContent className="p-6 text-center">
               <Users className="h-8 w-8 text-purple-400 mx-auto mb-2" />
-              <div className="text-2xl font-bold text-white">5,000+</div>
-              <div className="text-slate-300 text-sm">Active Job Seekers</div>
+              <div className="text-2xl font-bold text-white">
+                {userApplications.filter(app => app.status === 'shortlisted').length}
+              </div>
+              <div className="text-slate-300 text-sm">Shortlisted</div>
             </CardContent>
           </Card>
           <Card className="bg-white/5 border-white/10 backdrop-blur-lg hover:bg-white/10 transition-all duration-300">
             <CardContent className="p-6 text-center">
               <Star className="h-8 w-8 text-yellow-400 mx-auto mb-2" />
-              <div className="text-2xl font-bold text-white">95%</div>
-              <div className="text-slate-300 text-sm">Success Rate</div>
+              <div className="text-2xl font-bold text-white">
+                {userApplications.filter(app => app.status === 'selected').length}
+              </div>
+              <div className="text-slate-300 text-sm">Selected</div>
             </CardContent>
           </Card>
         </div>
 
         {/* Job Listings */}
         <div className="space-y-6">
-          {filteredJobs.map((job, index) => (
-            <Card 
-              key={job.id}
-              className="bg-white/5 border-white/10 backdrop-blur-lg hover:bg-white/10 transition-all duration-300 transform hover:scale-[1.02] hover:shadow-2xl animate-in slide-in-from-bottom-5"
-              style={{ animationDelay: `${index * 100}ms` }}
-            >
-              <CardContent className="p-6">
-                <div className="flex justify-between items-start mb-4">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
-                      <h3 className="text-2xl font-bold text-white">{job.title}</h3>
+          {filteredJobs.map((job, index) => {
+            const isExpanded = expandedJobs.has(job.id);
+            const hasApplied = userApplications.some(app => app.job_id === job.id);
+            
+            return (
+              <Card 
+                key={job.id}
+                className="bg-white/5 border-white/10 backdrop-blur-lg hover:bg-white/10 transition-all duration-300 transform hover:scale-[1.02] hover:shadow-2xl animate-in slide-in-from-bottom-5"
+                style={{ animationDelay: `${index * 100}ms` }}
+              >
+                <CardContent className="p-6">
+                  <div className="flex justify-between items-start mb-4">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-2">
+                        <h3 className="text-2xl font-bold text-white">{job.title}</h3>
+                        {hasApplied && (
+                          <Badge className="bg-green-500/20 text-green-300 border-green-500/30">
+                            Applied
+                          </Badge>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-4 text-slate-300 mb-3">
+                        <div className="flex items-center gap-1">
+                          <Building className="h-4 w-4" />
+                          <span>{job.company?.name || 'Company'}</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <MapPin className="h-4 w-4" />
+                          <span>{job.location}</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Clock className="h-4 w-4" />
+                          <span>{new Date(job.created_at).toLocaleDateString()}</span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 mb-4">
+                        <Badge className="bg-blue-500/20 text-blue-300 border-blue-400/30">
+                          {job.job_type}
+                        </Badge>
+                        <Badge className="bg-emerald-500/20 text-emerald-300 border-emerald-400/30">
+                          {job.experience_level}
+                        </Badge>
+                        {job.salary_min && job.salary_max && (
+                          <div className="flex items-center gap-1 text-green-400">
+                            <DollarSign className="h-4 w-4" />
+                            <span className="font-semibold">${job.salary_min.toLocaleString()} - ${job.salary_max.toLocaleString()}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    
+                    <div className="flex flex-col gap-2">
                       <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-red-400 hover:text-red-300 hover:bg-red-500/10 p-1"
-                        onClick={() => handleSaveJob(job.id)}
+                        variant="outline"
+                        className="border-blue-400/30 text-blue-300 hover:bg-blue-500/10"
+                        onClick={() => toggleJobExpansion(job.id)}
                       >
-                        <Heart className={`h-5 w-5 ${job.isSaved ? 'fill-current' : ''}`} />
+                        <Eye className="h-4 w-4 mr-2" />
+                        {isExpanded ? 'Hide' : 'View'} Details
+                        {isExpanded ? <ChevronUp className="h-4 w-4 ml-2" /> : <ChevronDown className="h-4 w-4 ml-2" />}
                       </Button>
                     </div>
-                    <div className="flex items-center gap-4 text-slate-300 mb-3">
-                      <div className="flex items-center gap-1">
-                        <Building className="h-4 w-4" />
-                        <span>{job.company}</span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <MapPin className="h-4 w-4" />
-                        <span>{job.location}</span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Clock className="h-4 w-4" />
-                        <span>{job.postedDate}</span>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2 mb-4">
-                      <Badge className="bg-blue-500/20 text-blue-300 border-blue-400/30">
-                        {job.type}
-                      </Badge>
-                      <Badge className="bg-emerald-500/20 text-emerald-300 border-emerald-400/30">
-                        {job.experience}
-                      </Badge>
-                      <div className="flex items-center gap-1 text-green-400">
-                        <DollarSign className="h-4 w-4" />
-                        <span className="font-semibold">{job.salary}</span>
-                      </div>
-                    </div>
                   </div>
-                  
-                  <div className="flex flex-col gap-2">
-                    <Button
-                      variant="outline"
-                      className="border-blue-400/30 text-blue-300 hover:bg-blue-500/10"
-                      onClick={() => toggleJobExpansion(job.id)}
-                    >
-                      <Eye className="h-4 w-4 mr-2" />
-                      {job.isExpanded ? 'Hide' : 'View'} Details
-                      {job.isExpanded ? <ChevronUp className="h-4 w-4 ml-2" /> : <ChevronDown className="h-4 w-4 ml-2" />}
-                    </Button>
-                  </div>
-                </div>
 
-                {/* Expanded Content */}
-                {job.isExpanded && (
-                  <div className="border-t border-white/10 pt-6 space-y-6 animate-in slide-in-from-top-5 duration-300">
-                    <div>
-                      <h4 className="text-lg font-semibold text-white mb-3">Job Description</h4>
-                      <p className="text-slate-300 leading-relaxed">{job.description}</p>
-                    </div>
-                    
-                    <div>
-                      <h4 className="text-lg font-semibold text-white mb-3">Requirements</h4>
-                      <div className="flex flex-wrap gap-2">
-                        {job.requirements.map((req, index) => (
-                          <Badge key={index} className="bg-purple-500/20 text-purple-300 border-purple-400/30">
-                            {req}
-                          </Badge>
-                        ))}
+                  {/* Expanded Content */}
+                  {isExpanded && (
+                    <div className="border-t border-white/10 pt-6 space-y-6 animate-in slide-in-from-top-5 duration-300">
+                      <div>
+                        <h4 className="text-lg font-semibold text-white mb-3">Job Description</h4>
+                        <p className="text-slate-300 leading-relaxed">{job.description}</p>
+                      </div>
+                      
+                      <div>
+                        <h4 className="text-lg font-semibold text-white mb-3">Requirements</h4>
+                        <p className="text-slate-300 leading-relaxed">{job.requirements}</p>
+                      </div>
+                      
+                      <div className="flex justify-end pt-4">
+                        <Button
+                          className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white border-0 transition-all duration-300 transform hover:scale-105 px-8"
+                          onClick={() => handleApplyToJob(job)}
+                          disabled={hasApplied || !user}
+                        >
+                          {hasApplied ? 'Already Applied' : 'Apply Now'}
+                        </Button>
                       </div>
                     </div>
-                    
-                    <div>
-                      <h4 className="text-lg font-semibold text-white mb-3">Benefits</h4>
-                      <div className="flex flex-wrap gap-2">
-                        {job.benefits.map((benefit, index) => (
-                          <Badge key={index} className="bg-green-500/20 text-green-300 border-green-400/30">
-                            {benefit}
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
-                    
-                    <div className="flex justify-end pt-4">
-                      <Button
-                        className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white border-0 transition-all duration-300 transform hover:scale-105 px-8"
-                        onClick={() => handleApplyToJob(job)}
-                      >
-                        Apply Now
-                      </Button>
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          ))}
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
 
         {filteredJobs.length === 0 && (
@@ -390,13 +421,79 @@ const JobSeekerDashboard = () => {
         )}
       </div>
 
-      {/* Job Application Modal */}
-      {showApplicationModal && selectedJob && (
-        <JobApplicationModal
-          job={selectedJob}
-          isOpen={showApplicationModal}
-          onClose={() => setShowApplicationModal(false)}
-        />
+      {/* Application Modal */}
+      {showApplicationModal && currentJob && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <Card className="bg-slate-800 border-slate-700 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <CardHeader>
+              <CardTitle className="text-white">Apply to {currentJob.title}</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div>
+                <label className="text-slate-200 text-sm font-medium mb-2 block">Cover Letter</label>
+                <textarea
+                  value={coverLetter}
+                  onChange={(e) => setCoverLetter(e.target.value)}
+                  className="w-full h-32 bg-slate-700 border-slate-600 text-white rounded-md px-3 py-2 resize-none"
+                  placeholder="Write a brief cover letter..."
+                />
+              </div>
+              
+              <div>
+                <label className="text-slate-200 text-sm font-medium mb-2 block">Resume (PDF)</label>
+                <div className="border-2 border-dashed border-slate-600 rounded-lg p-6 text-center">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".pdf"
+                    onChange={handleFileSelect}
+                    className="hidden"
+                  />
+                  {selectedFile ? (
+                    <div className="flex items-center justify-center gap-2 text-green-400">
+                      <FileText className="h-5 w-5" />
+                      <span>{selectedFile.name}</span>
+                    </div>
+                  ) : (
+                    <div>
+                      <Upload className="h-8 w-8 text-slate-400 mx-auto mb-2" />
+                      <p className="text-slate-400 mb-2">Click to upload your resume</p>
+                      <Button
+                        variant="outline"
+                        className="border-slate-600 text-slate-200"
+                        onClick={() => fileInputRef.current?.click()}
+                      >
+                        Choose File
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-4">
+                <Button
+                  variant="outline"
+                  className="border-slate-600 text-slate-200"
+                  onClick={() => {
+                    setShowApplicationModal(false);
+                    setCoverLetter("");
+                    setSelectedFile(null);
+                    setCurrentJob(null);
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  className="bg-blue-600 hover:bg-blue-700"
+                  onClick={submitApplication}
+                  disabled={applyingToJob === currentJob.id}
+                >
+                  {applyingToJob === currentJob.id ? 'Submitting...' : 'Submit Application'}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       )}
 
       {/* AI Chat Component */}

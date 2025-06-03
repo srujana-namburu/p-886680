@@ -118,8 +118,42 @@ export const jobService = {
     return data;
   },
 
+  async createJob(jobData: {
+    title: string;
+    description: string;
+    requirements: string;
+    location: string;
+    job_type: string;
+    experience_level: string;
+    salary_min?: number;
+    salary_max?: number;
+    company_id?: string;
+  }): Promise<JobPosting | null> {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return null;
+
+    const { data, error } = await supabase
+      .from('job_postings')
+      .insert({
+        ...jobData,
+        posted_by: user.id,
+        status: 'active'
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error creating job:', error);
+      return null;
+    }
+    return data;
+  },
+
   async incrementJobViews(jobId: string): Promise<void> {
-    const { error } = await supabase.rpc('increment_job_views', { job_id: jobId });
+    const { error } = await supabase
+      .from('job_postings')
+      .update({ views_count: supabase.sql`views_count + 1` })
+      .eq('id', jobId);
 
     if (error) {
       console.error('Error incrementing job views:', error);
@@ -152,7 +186,7 @@ export const applicationService = {
       console.error('Error fetching applications:', error);
       return [];
     }
-    return data as Application[] || [];
+    return (data as unknown as Application[]) || [];
   },
 
   async getUserApplications(userId: string): Promise<Application[]> {
@@ -169,7 +203,34 @@ export const applicationService = {
       console.error('Error fetching user applications:', error);
       return [];
     }
-    return data as Application[] || [];
+    return (data as unknown as Application[]) || [];
+  },
+
+  async createApplication(applicationData: {
+    job_id: string;
+    cover_letter?: string;
+    resume_url?: string;
+    resume_filename?: string;
+  }): Promise<Application | null> {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return null;
+
+    const { data, error } = await supabase
+      .from('applications')
+      .insert({
+        ...applicationData,
+        candidate_id: user.id,
+        status: 'pending',
+        applied_at: new Date().toISOString()
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error creating application:', error);
+      return null;
+    }
+    return data;
   },
 
   async updateApplicationStatus(id: string, status: ApplicationStatus, notes?: string): Promise<Application | null> {
@@ -230,7 +291,7 @@ export const interviewService = {
       console.error('Error fetching interviews:', error);
       return [];
     }
-    return data as Interview[] || [];
+    return (data as unknown as Interview[]) || [];
   },
 
   async getInterviewsByApplication(applicationId: string): Promise<Interview[]> {
@@ -247,7 +308,7 @@ export const interviewService = {
       console.error('Error fetching interviews for application:', error);
       return [];
     }
-    return data as Interview[] || [];
+    return (data as unknown as Interview[]) || [];
   }
 };
 
@@ -267,7 +328,7 @@ export const chatService = {
       console.error('Error fetching chat transcripts:', error);
       return [];
     }
-    return data as ChatTranscript[] || [];
+    return (data as unknown as ChatTranscript[]) || [];
   },
 
   async addChatMessage(applicationId: string, message: string, isFromCandidate: boolean): Promise<ChatTranscript | null> {

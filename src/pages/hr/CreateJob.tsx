@@ -6,23 +6,72 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { ArrowLeft, Save, Eye } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { useToast } from "@/hooks/use-toast";
+import { jobService } from "@/services/supabaseService";
 
 const HRCreateJob = () => {
+  const navigate = useNavigate();
+  const { toast } = useToast();
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [jobData, setJobData] = useState({
     title: '',
-    company: '',
-    location: '',
-    type: '',
     description: '',
     requirements: '',
-    salary: ''
+    location: '',
+    job_type: 'full-time',
+    experience_level: 'mid-level',
+    salary_min: '',
+    salary_max: ''
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('Job posted:', jobData);
-    // Handle job creation logic here
+    
+    if (!jobData.title || !jobData.description || !jobData.requirements || !jobData.location) {
+      toast({
+        title: "Error",
+        description: "Please fill in all required fields.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const jobToCreate = {
+        title: jobData.title,
+        description: jobData.description,
+        requirements: jobData.requirements,
+        location: jobData.location,
+        job_type: jobData.job_type,
+        experience_level: jobData.experience_level,
+        salary_min: jobData.salary_min ? parseInt(jobData.salary_min) : undefined,
+        salary_max: jobData.salary_max ? parseInt(jobData.salary_max) : undefined,
+      };
+
+      const result = await jobService.createJob(jobToCreate);
+
+      if (result) {
+        toast({
+          title: "Success!",
+          description: "Job posting created successfully.",
+        });
+        navigate('/hr/dashboard');
+      } else {
+        throw new Error('Failed to create job');
+      }
+    } catch (error) {
+      console.error('Error creating job:', error);
+      toast({
+        title: "Error",
+        description: "Failed to create job posting. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -49,78 +98,119 @@ const HRCreateJob = () => {
             <CardContent className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <Label htmlFor="title" className="text-slate-200">Job Title</Label>
+                  <Label htmlFor="title" className="text-slate-200">Job Title *</Label>
                   <Input
                     id="title"
                     value={jobData.title}
                     onChange={(e) => setJobData({...jobData, title: e.target.value})}
                     className="bg-slate-700 border-slate-600 text-white mt-2"
                     placeholder="e.g. Senior React Developer"
+                    required
                   />
                 </div>
                 <div>
-                  <Label htmlFor="company" className="text-slate-200">Company Name</Label>
-                  <Input
-                    id="company"
-                    value={jobData.company}
-                    onChange={(e) => setJobData({...jobData, company: e.target.value})}
-                    className="bg-slate-700 border-slate-600 text-white mt-2"
-                    placeholder="Your company name"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <Label htmlFor="location" className="text-slate-200">Location</Label>
+                  <Label htmlFor="location" className="text-slate-200">Location *</Label>
                   <Input
                     id="location"
                     value={jobData.location}
                     onChange={(e) => setJobData({...jobData, location: e.target.value})}
                     className="bg-slate-700 border-slate-600 text-white mt-2"
                     placeholder="e.g. San Francisco, CA"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <Label htmlFor="job_type" className="text-slate-200">Job Type</Label>
+                  <select
+                    id="job_type"
+                    value={jobData.job_type}
+                    onChange={(e) => setJobData({...jobData, job_type: e.target.value})}
+                    className="w-full mt-2 bg-slate-700 border-slate-600 text-white rounded-md px-3 py-2"
+                  >
+                    <option value="full-time">Full-time</option>
+                    <option value="part-time">Part-time</option>
+                    <option value="contract">Contract</option>
+                    <option value="remote">Remote</option>
+                  </select>
+                </div>
+                <div>
+                  <Label htmlFor="experience_level" className="text-slate-200">Experience Level</Label>
+                  <select
+                    id="experience_level"
+                    value={jobData.experience_level}
+                    onChange={(e) => setJobData({...jobData, experience_level: e.target.value})}
+                    className="w-full mt-2 bg-slate-700 border-slate-600 text-white rounded-md px-3 py-2"
+                  >
+                    <option value="entry-level">Entry Level</option>
+                    <option value="mid-level">Mid Level</option>
+                    <option value="senior">Senior</option>
+                    <option value="executive">Executive</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <Label htmlFor="salary_min" className="text-slate-200">Minimum Salary</Label>
+                  <Input
+                    id="salary_min"
+                    type="number"
+                    value={jobData.salary_min}
+                    onChange={(e) => setJobData({...jobData, salary_min: e.target.value})}
+                    className="bg-slate-700 border-slate-600 text-white mt-2"
+                    placeholder="e.g. 80000"
                   />
                 </div>
                 <div>
-                  <Label htmlFor="salary" className="text-slate-200">Salary Range</Label>
+                  <Label htmlFor="salary_max" className="text-slate-200">Maximum Salary</Label>
                   <Input
-                    id="salary"
-                    value={jobData.salary}
-                    onChange={(e) => setJobData({...jobData, salary: e.target.value})}
+                    id="salary_max"
+                    type="number"
+                    value={jobData.salary_max}
+                    onChange={(e) => setJobData({...jobData, salary_max: e.target.value})}
                     className="bg-slate-700 border-slate-600 text-white mt-2"
-                    placeholder="e.g. $80,000 - $120,000"
+                    placeholder="e.g. 120000"
                   />
                 </div>
               </div>
 
               <div>
-                <Label htmlFor="description" className="text-slate-200">Job Description</Label>
+                <Label htmlFor="description" className="text-slate-200">Job Description *</Label>
                 <Textarea
                   id="description"
                   value={jobData.description}
                   onChange={(e) => setJobData({...jobData, description: e.target.value})}
                   className="bg-slate-700 border-slate-600 text-white mt-2 min-h-32"
                   placeholder="Describe the role, responsibilities, and what you're looking for..."
+                  required
                 />
               </div>
 
               <div>
-                <Label htmlFor="requirements" className="text-slate-200">Requirements</Label>
+                <Label htmlFor="requirements" className="text-slate-200">Requirements *</Label>
                 <Textarea
                   id="requirements"
                   value={jobData.requirements}
                   onChange={(e) => setJobData({...jobData, requirements: e.target.value})}
                   className="bg-slate-700 border-slate-600 text-white mt-2 min-h-32"
                   placeholder="List the required skills, experience, and qualifications..."
+                  required
                 />
               </div>
             </CardContent>
           </Card>
 
           <div className="flex gap-4">
-            <Button type="submit" className="bg-blue-600 hover:bg-blue-700">
+            <Button 
+              type="submit" 
+              className="bg-blue-600 hover:bg-blue-700"
+              disabled={isSubmitting}
+            >
               <Save className="w-4 h-4 mr-2" />
-              Post Job
+              {isSubmitting ? 'Creating...' : 'Post Job'}
             </Button>
             <Button type="button" variant="outline" className="border-slate-600 text-slate-200">
               <Eye className="w-4 h-4 mr-2" />
