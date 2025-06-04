@@ -374,13 +374,24 @@ export const applicationService = {
   },
 
   async updateApplicationStatus(id: string, status: ApplicationStatus, notes?: string): Promise<Application | null> {
+    const updateData: any = { 
+      status,
+      updated_at: new Date().toISOString()
+    };
+
+    // If notes are provided, update hr_notes
+    if (notes) {
+      updateData.hr_notes = notes;
+    }
+
+    // If status is rejected and notes are provided, also update rejection_reason
+    if (status === 'rejected' && notes) {
+      updateData.rejection_reason = notes;
+    }
+
     const { data, error } = await supabase
       .from('applications')
-      .update({ 
-        status,
-        hr_notes: notes,
-        updated_at: new Date().toISOString()
-      })
+      .update(updateData)
       .eq('id', id)
       .select()
       .single();

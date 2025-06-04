@@ -5,11 +5,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Download, FileText, Star, Users, Upload, X, Loader } from "lucide-react";
+import { Download, FileText, Star, Users, Upload, X, Loader, User, CheckCircle, XCircle, Briefcase } from "lucide-react";
 import { useAllJobs } from "@/hooks/useSupabaseData";
-import { applicationService, resumeService } from "@/services/supabaseService";
+import { applicationService, resumeService, jobService } from "@/services/supabaseService";
 import { useToast } from "@/hooks/use-toast";
-import type { JobPosting, Application } from "@/types/database";
+import type { JobPosting, Application, ApplicationStatus, JobStatus } from "@/types/database";
 import { Progress } from "@/components/ui/progress";
 
 const ResumeMatcherForm = () => {
@@ -21,10 +21,11 @@ const ResumeMatcherForm = () => {
   const [jobDescription, setJobDescription] = useState('');
   const [requirements, setRequirements] = useState('');
   const [responsibilities, setResponsibilities] = useState('');
+  const [topNResumes, setTopNResumes] = useState<number>(5);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   
-  const { data: jobs = [] } = useAllJobs();
+  const { data: jobs = [], refetch: refetchJobs } = useAllJobs();
 
   const [analysisResults, setAnalysisResults] = useState<any[]>([]);
   const [analyzing, setAnalyzing] = useState(false);
@@ -179,6 +180,95 @@ const ResumeMatcherForm = () => {
     window.open(application.resume_url, '_blank', 'noopener,noreferrer');
   };
 
+  const handleApplicationStatusUpdate = async (applicationId: string, newStatus: ApplicationStatus) => {
+    try {
+      await applicationService.updateApplicationStatus(applicationId, newStatus);
+      // Update the local state
+      setJobApplications(prev => 
+        prev.map(app => 
+          app.id === applicationId ? { ...app, status: newStatus } : app
+        )
+      );
+      toast({
+        title: "Success",
+        description: "Application status updated successfully.",
+      });
+    } catch (error) {
+      console.error('Error updating application status:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update application status.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleJobStatusUpdate = async (jobId: string, newStatus: JobStatus) => {
+    try {
+      await jobService.updateJob(jobId, { status: newStatus });
+      
+      // If job is being closed, reject remaining candidates
+      if (newStatus === 'closed' && analysisResults.length > 0) {
+        await rejectRemainingCandidates(jobId);
+      }
+      
+      setSelectedJob(prev => prev ? { ...prev, status: newStatus } : null);
+      refetchJobs();
+      
+      toast({
+        title: "Success",
+        description: `Job status updated to ${newStatus}.`,
+      });
+    } catch (error) {
+      console.error('Error updating job status:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update job status.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const rejectRemainingCandidates = async (jobId: string) => {
+    try {
+      // Get top N candidate filenames from analysis results
+      const topNCandidates = analysisResults.slice(0, topNResumes).map(result => result.filename);
+      
+      // Find applications that are not in top N and still pending
+      const applicationsToReject = jobApplications.filter(app => {
+        const filename = app.resume_filename;
+        return (
+          app.status === 'pending' && 
+          filename && 
+          !topNCandidates.includes(filename)
+        );
+      });
+
+      // Update status for each application
+      for (const application of applicationsToReject) {
+        await applicationService.updateApplicationStatus(
+          application.id, 
+          'rejected',
+          'Not qualified during the initial screening round - resume did not meet the minimum requirements for this position'
+        );
+      }
+
+      if (applicationsToReject.length > 0) {
+        toast({
+          title: "Success",
+          description: `${applicationsToReject.length} candidates were automatically rejected.`,
+        });
+      }
+    } catch (error) {
+      console.error('Error rejecting remaining candidates:', error);
+      toast({
+        title: "Error",
+        description: "Failed to reject remaining candidates.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const canAnalyze = jobDescription.trim() && requirements.trim() && responsibilities.trim();
 
   const handleAnalyze = async () => {
@@ -190,6 +280,7 @@ const ResumeMatcherForm = () => {
       // Combine all fields for JD
       const combinedJD = `${jobDescription}\nRequirements:\n${requirements}\nKey Responsibilities:\n${responsibilities}`;
       formData.append("jd", combinedJD);
+      formData.append("top_n", topNResumes.toString());
       uploadedResumes.forEach((file) => {
         formData.append("resumes", file, file.name);
       });
@@ -207,6 +298,20 @@ const ResumeMatcherForm = () => {
       setAnalysisError(err.message || "Unknown error");
     } finally {
       setAnalyzing(false);
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'pending': return 'bg-yellow-500/20 text-yellow-300 border-yellow-500/30';
+      case 'shortlisted': return 'bg-blue-500/20 text-blue-300 border-blue-500/30';
+      case 'interviewed': return 'bg-purple-500/20 text-purple-300 border-purple-500/30';
+      case 'selected': return 'bg-green-500/20 text-green-300 border-green-500/30';
+      case 'rejected': return 'bg-red-500/20 text-red-300 border-red-500/30';
+      case 'active': return 'bg-green-500/20 text-green-300 border-green-500/30';
+      case 'closed': return 'bg-red-500/20 text-red-300 border-red-500/30';
+      case 'paused': return 'bg-yellow-500/20 text-yellow-300 border-yellow-500/30';
+      default: return 'bg-gray-500/20 text-gray-300 border-gray-500/30';
     }
   };
 
@@ -274,6 +379,23 @@ const ResumeMatcherForm = () => {
                 required
               />
             </div>
+          </div>
+
+          {/* Top N Resumes Input */}
+          <div className="space-y-2">
+            <label className="text-slate-200 text-sm font-medium">
+              Number of Top Resumes to Display (Optional)
+            </label>
+            <Input
+              type="number"
+              value={topNResumes}
+              onChange={(e) => setTopNResumes(parseInt(e.target.value) || 5)}
+              placeholder="5"
+              min="1"
+              max="50"
+              className="bg-slate-700 border-slate-600 text-slate-200 w-32"
+            />
+            <p className="text-slate-400 text-xs">Default: 5 resumes</p>
           </div>
 
           {/* Resume Upload Section */}
@@ -357,13 +479,132 @@ const ResumeMatcherForm = () => {
         </CardContent>
       </Card>
 
-      {/* Candidate Resumes */}
+      {/* Job Status Mini View */}
+      {selectedJob && (
+        <Card className="bg-slate-800 border-slate-700">
+          <CardHeader>
+            <CardTitle className="text-white flex items-center gap-2">
+              <Briefcase className="h-5 w-5" />
+              Job Status Management
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-between p-4 bg-slate-700/30 rounded-lg border border-slate-600/50">
+              <div>
+                <h3 className="text-lg font-semibold text-white">{selectedJob.title}</h3>
+                <p className="text-slate-300">{selectedJob.location}</p>
+              </div>
+              <div className="flex items-center gap-4">
+                <Badge className={`${getStatusColor(selectedJob.status)} border px-3 py-1`}>
+                  {selectedJob.status.charAt(0).toUpperCase() + selectedJob.status.slice(1)}
+                </Badge>
+                <Select
+                  value={selectedJob.status}
+                  onValueChange={(value: JobStatus) => handleJobStatusUpdate(selectedJob.id, value)}
+                >
+                  <SelectTrigger className="w-40 bg-slate-700 border-slate-600 text-white">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-slate-700 border-slate-600">
+                    <SelectItem value="active">Active</SelectItem>
+                    <SelectItem value="paused">Paused</SelectItem>
+                    <SelectItem value="closed">Closed</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* AI Analysis Results with Candidate Mini Views */}
+      {analysisResults.length > 0 && (
+        <Card className="bg-slate-800 border-slate-700 mt-8">
+          <CardHeader>
+            <CardTitle className="text-white flex items-center gap-2">
+              <Star className="h-5 w-5 text-yellow-400" />
+              AI Resume Match Results (Top {Math.min(topNResumes, analysisResults.length)})
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-6">
+              {analysisResults.slice(0, topNResumes).map((result, idx) => {
+                // Find the corresponding application
+                const application = jobApplications.find(app => app.resume_filename === result.filename);
+                
+                return (
+                  <div key={idx} className="p-4 bg-slate-700/30 rounded-lg border border-slate-600/50">
+                    <div className="grid md:grid-cols-2 gap-4">
+                      {/* Resume Analysis Card */}
+                      <div className="flex flex-col gap-2">
+                        <div className="flex items-center gap-2">
+                          <FileText className="h-5 w-5 text-blue-400" />
+                          <span className="text-slate-200 font-medium truncate">{result.filename}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-slate-400 text-xs">Match:</span>
+                          <span className="text-lg font-bold text-green-400">{result.match_percent}%</span>
+                        </div>
+                        <Progress value={result.match_percent} className="h-2 bg-slate-600" />
+                      </div>
+
+                      {/* Candidate Mini View */}
+                      {application && (
+                        <div className="p-3 bg-slate-600/30 rounded-lg border border-slate-500/30">
+                          <div className="flex items-center gap-2 mb-2">
+                            <User className="h-4 w-4 text-slate-400" />
+                            <span className="text-white font-medium">
+                              {application.candidate?.full_name || 'Unknown Candidate'}
+                            </span>
+                          </div>
+                          <p className="text-slate-300 text-sm mb-2">
+                            {application.candidate?.email}
+                          </p>
+                          <div className="flex items-center justify-between">
+                            <Badge className={`${getStatusColor(application.status)} border px-2 py-1 text-xs`}>
+                              {application.status.charAt(0).toUpperCase() + application.status.slice(1)}
+                            </Badge>
+                            <div className="flex gap-1">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="border-blue-500 text-blue-400 hover:bg-blue-500/10 px-2 py-1 text-xs"
+                                onClick={() => handleApplicationStatusUpdate(application.id, 'shortlisted')}
+                                disabled={application.status === 'shortlisted'}
+                              >
+                                <CheckCircle className="h-3 w-3 mr-1" />
+                                Shortlist
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="border-red-500 text-red-400 hover:bg-red-500/10 px-2 py-1 text-xs"
+                                onClick={() => handleApplicationStatusUpdate(application.id, 'rejected')}
+                                disabled={application.status === 'rejected'}
+                              >
+                                <XCircle className="h-3 w-3 mr-1" />
+                                Reject
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Existing Candidate Resumes Section */}
       {selectedJob && (
         <Card className="bg-slate-800 border-slate-700">
           <CardHeader>
             <CardTitle className="text-white flex items-center gap-2">
               <Users className="h-5 w-5" />
-              Candidates for {selectedJob.title}
+              All Candidates for {selectedJob.title}
               <span className="ml-2 bg-slate-700 text-slate-200 rounded px-2 py-1 text-xs">{jobApplications.length} resumes</span>
             </CardTitle>
           </CardHeader>
@@ -395,7 +636,9 @@ const ResumeMatcherForm = () => {
                         </p>
                         <div className="flex items-center gap-4 text-sm text-slate-400">
                           <span>Applied: {new Date(application.applied_at).toLocaleDateString()}</span>
-                          <span className="bg-yellow-500/20 text-yellow-300 border-yellow-500/30 rounded px-2 py-1 text-xs">{application.status}</span>
+                          <Badge className={`${getStatusColor(application.status)} border px-2 py-1 text-xs`}>
+                            {application.status}
+                          </Badge>
                         </div>
                       </div>
                       <div className="flex gap-2">
@@ -423,34 +666,6 @@ const ResumeMatcherForm = () => {
                 ))}
               </div>
             )}
-          </CardContent>
-        </Card>
-      )}
-
-      {analysisResults.length > 0 && (
-        <Card className="bg-slate-800 border-slate-700 mt-8">
-          <CardHeader>
-            <CardTitle className="text-white flex items-center gap-2">
-              <Star className="h-5 w-5 text-yellow-400" />
-              AI Resume Match Results
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {analysisResults.map((result, idx) => (
-                <div key={idx} className="p-4 bg-slate-700/30 rounded-lg border border-slate-600/50 flex flex-col gap-2">
-                  <div className="flex items-center gap-2">
-                    <FileText className="h-5 w-5 text-blue-400" />
-                    <span className="text-slate-200 font-medium truncate">{result.filename}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-slate-400 text-xs">Match:</span>
-                    <span className="text-lg font-bold text-green-400">{result.match_percent}%</span>
-                  </div>
-                  <Progress value={result.match_percent} className="h-2 bg-slate-600" />
-                </div>
-              ))}
-            </div>
           </CardContent>
         </Card>
       )}
