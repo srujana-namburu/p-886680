@@ -8,6 +8,8 @@ import type {
   AIAnalysisResult,
   Notification,
   SystemSetting,
+  InterviewFeedbackFile,
+  AnalysisSummarizer,
   ApplicationStatus,
   UserRole,
   AIAnalysisType,
@@ -770,6 +772,108 @@ export const jobSeekerChatService = {
       return [];
     }
     return data || [];
+  }
+};
+
+// Interview Feedback Files Services
+export const interviewFeedbackFileService = {
+  async getByJobId(jobId: string): Promise<InterviewFeedbackFile[]> {
+    const { data, error } = await supabase
+      .from('interview_feedback_files')
+      .select('*')
+      .eq('job_id', jobId)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching interview feedback files:', error);
+      return [];
+    }
+    return data || [];
+  },
+
+  async create(fileData: {
+    job_id: string;
+    file_url: string;
+    file_name: string;
+  }): Promise<InterviewFeedbackFile | null> {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return null;
+
+    const { data, error } = await supabase
+      .from('interview_feedback_files')
+      .insert({
+        ...fileData,
+        uploaded_by: user.id
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error creating interview feedback file:', error);
+      return null;
+    }
+    return data;
+  }
+};
+
+// Analysis Summarizer Services
+export const analysisSummarizerService = {
+  async getByJobId(jobId: string): Promise<AnalysisSummarizer[]> {
+    const { data, error } = await supabase
+      .from('analysis_summarizer')
+      .select('*')
+      .eq('job_id', jobId)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching analysis summarizer records:', error);
+      return [];
+    }
+    return data || [];
+  },
+
+  async create(summarizerData: {
+    job_id: string;
+    input_csv_chat_url: string;
+    input_csv_chat_name: string;
+    output_csv_chat_url?: string;
+    output_csv_chat_name?: string;
+  }): Promise<AnalysisSummarizer | null> {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return null;
+
+    const { data, error } = await supabase
+      .from('analysis_summarizer')
+      .insert({
+        ...summarizerData,
+        created_by: user.id
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error creating analysis summarizer record:', error);
+      return null;
+    }
+    return data;
+  },
+
+  async update(id: string, updates: {
+    output_csv_chat_url?: string;
+    output_csv_chat_name?: string;
+  }): Promise<AnalysisSummarizer | null> {
+    const { data, error } = await supabase
+      .from('analysis_summarizer')
+      .update(updates)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error updating analysis summarizer record:', error);
+      return null;
+    }
+    return data;
   }
 };
 

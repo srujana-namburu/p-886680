@@ -172,3 +172,25 @@ export interface SystemSetting {
   created_at: string;
   updated_at: string;
 }
+
+export interface InterviewFeedbackFile {
+  id: string;
+  job_id: string;
+  file_url: string;
+  file_name: string;
+  uploaded_by?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AnalysisSummarizer {
+  id: string;
+  job_id: string;
+  input_csv_chat_url: string;
+  input_csv_chat_name: string;
+  output_csv_chat_url?: string;
+  output_csv_chat_name?: string;
+  created_by?: string;
+  created_at: string;
+  updated_at: string;
+}

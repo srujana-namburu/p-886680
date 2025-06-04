@@ -5,11 +5,12 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, FileText, Users, Briefcase, Brain } from "lucide-react";
+import { ArrowLeft, FileText, Users, Briefcase, Brain, Download, Upload } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import HRNav from "@/components/HRNav";
 import { useAllJobs, useApplications } from "@/hooks/useSupabaseData";
+import { csvService } from "@/services/csvService";
 
 const InterviewSummary = () => {
   const { toast } = useToast();
@@ -19,7 +20,9 @@ const InterviewSummary = () => {
   const [selectedCandidateId, setSelectedCandidateId] = useState('');
   const [interviewNotes, setInterviewNotes] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isGeneratingCSV, setIsGeneratingCSV] = useState(false);
   const [summary, setSummary] = useState<any>(null);
+  const [generatedCSVUrl, setGeneratedCSVUrl] = useState<string | null>(null);
 
   // Filter candidates based on selected job
   const filteredCandidates = selectedJobId 
@@ -39,10 +42,34 @@ const InterviewSummary = () => {
     setIsGenerating(true);
 
     try {
-      // Simulate AI processing
+      // If no candidate is selected and no notes provided, generate CSV instead
+      if (!selectedCandidateId && !interviewNotes.trim()) {
+        setIsGeneratingCSV(true);
+        
+        const csvUrl = await csvService.generateInterviewFeedbackCSV(selectedJobId);
+        
+        if (csvUrl) {
+          setGeneratedCSVUrl(csvUrl);
+          toast({
+            title: "CSV Generated Successfully",
+            description: "Interview feedback CSV file has been created with candidate data and randomly generated feedback.",
+          });
+        } else {
+          toast({
+            title: "CSV Generation Failed",
+            description: "Failed to generate CSV file. Please try again.",
+            variant: "destructive",
+          });
+        }
+        
+        setIsGeneratingCSV(false);
+        setIsGenerating(false);
+        return;
+      }
+
+      // Original summary generation logic
       await new Promise(resolve => setTimeout(resolve, 2000));
       
-      // Mock summary result
       const selectedJob = jobs.find(job => job.id === selectedJobId);
       const selectedApplication = selectedCandidateId 
         ? applications.find(app => app.id === selectedCandidateId)
@@ -51,8 +78,8 @@ const InterviewSummary = () => {
       const mockSummary = {
         candidateName: selectedApplication?.candidate?.full_name || 'General Interview',
         jobTitle: selectedJob?.title || 'Unknown Position',
-        overallRating: Math.floor(Math.random() * 3) + 3, // 3-5 rating
-        technicalSkills: Math.floor(Math.random() * 2) + 4, // 4-5 rating
+        overallRating: Math.floor(Math.random() * 3) + 3,
+        technicalSkills: Math.floor(Math.random() * 2) + 4,
         communication: Math.floor(Math.random() * 2) + 4,
         culturalFit: Math.floor(Math.random() * 2) + 3,
         keyStrengths: [
@@ -83,6 +110,17 @@ const InterviewSummary = () => {
       });
     } finally {
       setIsGenerating(false);
+    }
+  };
+
+  const handleDownloadCSV = () => {
+    if (generatedCSVUrl) {
+      const link = document.createElement('a');
+      link.href = generatedCSVUrl;
+      link.download = `interview_feedback_${selectedJobId}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
     }
   };
 
@@ -166,6 +204,14 @@ const InterviewSummary = () => {
                     placeholder="Enter detailed interview notes, observations, and candidate responses... (optional)"
                   />
                 </div>
+
+                {(!selectedCandidateId && !interviewNotes.trim() && selectedJobId) && (
+                  <div className="p-4 bg-blue-900/20 border border-blue-500/30 rounded-lg">
+                    <p className="text-blue-300 text-sm">
+                      <strong>Note:</strong> Since no candidate or notes are selected, clicking "Generate Summary" will create a CSV file with all candidates who applied to this job position, including randomly generated interview feedback.
+                    </p>
+                  </div>
+                )}
                 
                 <Button 
                   onClick={handleGenerate}
@@ -175,7 +221,7 @@ const InterviewSummary = () => {
                   {isGenerating ? (
                     <>
                       <Brain className="w-4 h-4 mr-2 animate-spin" />
-                      Generating Summary...
+                      {isGeneratingCSV ? 'Generating CSV...' : 'Generating Summary...'}
                     </>
                   ) : (
                     <>
@@ -184,6 +230,16 @@ const InterviewSummary = () => {
                     </>
                   )}
                 </Button>
+
+                {generatedCSVUrl && (
+                  <Button 
+                    onClick={handleDownloadCSV}
+                    className="w-full bg-green-600 hover:bg-green-700 text-white"
+                  >
+                    <Download className="w-4 h-4 mr-2" />
+                    Download Generated CSV
+                  </Button>
+                )}
               </CardContent>
             </Card>
           </div>
@@ -195,7 +251,22 @@ const InterviewSummary = () => {
                 <CardTitle className="text-white">Interview Summary</CardTitle>
               </CardHeader>
               <CardContent>
-                {summary ? (
+                {generatedCSVUrl ? (
+                  <div className="space-y-4">
+                    <div className="text-center py-8">
+                      <Upload className="h-16 w-16 text-green-400 mx-auto mb-4" />
+                      <h3 className="text-xl font-semibold text-white mb-2">CSV File Generated Successfully</h3>
+                      <p className="text-slate-300 mb-4">
+                        Interview feedback CSV has been created with candidate data from the selected job position.
+                      </p>
+                      <div className="bg-slate-700 p-4 rounded-lg">
+                        <p className="text-slate-200 text-sm">
+                          <strong>File contains:</strong> Candidate ID, Name, Interviewer, Job ID, and AI-generated interview feedback
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ) : summary ? (
                   <div className="space-y-6">
                     <div className="border-b border-slate-700 pb-4">
                       <h3 className="font-semibold text-white mb-2">Interview Overview</h3>
@@ -247,7 +318,7 @@ const InterviewSummary = () => {
                 ) : (
                   <div className="text-center py-12">
                     <FileText className="h-16 w-16 text-slate-600 mx-auto mb-4" />
-                    <p className="text-slate-400">Select job position to generate interview summary</p>
+                    <p className="text-slate-400">Select job position to generate interview summary or CSV file</p>
                   </div>
                 )}
               </CardContent>

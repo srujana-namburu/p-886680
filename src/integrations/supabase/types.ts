@@ -83,6 +83,57 @@ export type Database = {
           },
         ]
       }
+      analysis_summarizer: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          id: string
+          input_csv_chat_name: string
+          input_csv_chat_url: string
+          job_id: string | null
+          output_csv_chat_name: string | null
+          output_csv_chat_url: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          input_csv_chat_name: string
+          input_csv_chat_url: string
+          job_id?: string | null
+          output_csv_chat_name?: string | null
+          output_csv_chat_url?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          input_csv_chat_name?: string
+          input_csv_chat_url?: string
+          job_id?: string | null
+          output_csv_chat_name?: string | null
+          output_csv_chat_url?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "analysis_summarizer_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "analysis_summarizer_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "job_postings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       analytics_events: {
         Row: {
           application_id: string | null
@@ -425,6 +476,51 @@ export type Database = {
           },
           {
             foreignKeyName: "file_uploads_uploaded_by_fkey"
+            columns: ["uploaded_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      interview_feedback_files: {
+        Row: {
+          created_at: string | null
+          file_name: string
+          file_url: string
+          id: string
+          job_id: string | null
+          updated_at: string | null
+          uploaded_by: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          file_name: string
+          file_url: string
+          id?: string
+          job_id?: string | null
+          updated_at?: string | null
+          uploaded_by?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          file_name?: string
+          file_url?: string
+          id?: string
+          job_id?: string | null
+          updated_at?: string | null
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "interview_feedback_files_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "job_postings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "interview_feedback_files_uploaded_by_fkey"
             columns: ["uploaded_by"]
             isOneToOne: false
             referencedRelation: "profiles"
