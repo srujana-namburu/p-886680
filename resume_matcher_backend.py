@@ -31,8 +31,12 @@ def analyze_resumes():
         jd_text = request.form.get("jd")
         top_n = int(request.form.get("top_n", 5))
 
-        if not jd_text or 'resumes' not in request.files:
-            return jsonify({"error": "JD and resumes are required"}), 400
+        if not jd_text:
+            return jsonify({"error": "Job description is required"}), 400
+        if 'resumes' not in request.files:
+            return jsonify({"error": "No resumes uploaded"}), 400
+        if len(request.files.getlist('resumes')) == 0:
+            return jsonify({"error": "No valid resumes uploaded"}), 400
 
         print(f"[INFO] JD length: {len(jd_text)}")
         jd_embedding = model.encode([jd_text])

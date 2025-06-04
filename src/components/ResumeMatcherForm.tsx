@@ -290,7 +290,8 @@ const ResumeMatcherForm = () => {
         body: formData,
       });
       if (!response.ok) {
-        throw new Error("Failed to analyze resumes");
+        const errorData = await response.json().catch(() => ({ error: "Unknown error" }));
+        throw new Error(errorData.error || "Failed to analyze resumes");
       }
       const data = await response.json();
       setAnalysisResults(data);
