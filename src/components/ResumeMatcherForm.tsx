@@ -1,4 +1,3 @@
-
 import React, { useState, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,6 +10,7 @@ import { useAllJobs } from "@/hooks/useSupabaseData";
 import { applicationService, resumeService } from "@/services/supabaseService";
 import { useToast } from "@/hooks/use-toast";
 import type { JobPosting, Application } from "@/types/database";
+import { Progress } from "@/components/ui/progress";
 
 const ResumeMatcherForm = () => {
   const [selectedJob, setSelectedJob] = useState<JobPosting | null>(null);
@@ -25,6 +25,10 @@ const ResumeMatcherForm = () => {
   const { toast } = useToast();
   
   const { data: jobs = [] } = useAllJobs();
+
+  const [analysisResults, setAnalysisResults] = useState<any[]>([]);
+  const [analyzing, setAnalyzing] = useState(false);
+  const [analysisError, setAnalysisError] = useState<string | null>(null);
 
   const downloadResumeAsFile = async (application: Application): Promise<File | null> => {
     if (!application.resume_url) return null;
@@ -177,6 +181,35 @@ const ResumeMatcherForm = () => {
 
   const canAnalyze = jobDescription.trim() && requirements.trim() && responsibilities.trim();
 
+  const handleAnalyze = async () => {
+    setAnalyzing(true);
+    setAnalysisError(null);
+    setAnalysisResults([]);
+    try {
+      const formData = new FormData();
+      // Combine all fields for JD
+      const combinedJD = `${jobDescription}\nRequirements:\n${requirements}\nKey Responsibilities:\n${responsibilities}`;
+      formData.append("jd", combinedJD);
+      uploadedResumes.forEach((file) => {
+        formData.append("resumes", file, file.name);
+      });
+      // You may need to update the URL below to your backend endpoint
+      const response = await fetch("http://localhost:5002/analyze", {
+        method: "POST",
+        body: formData,
+      });
+      if (!response.ok) {
+        throw new Error("Failed to analyze resumes");
+      }
+      const data = await response.json();
+      setAnalysisResults(data);
+    } catch (err: any) {
+      setAnalysisError(err.message || "Unknown error");
+    } finally {
+      setAnalyzing(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <Card className="bg-slate-800 border-slate-700">
@@ -302,15 +335,23 @@ const ResumeMatcherForm = () => {
           <div className="text-center">
             <Button 
               className="bg-gradient-to-r from-purple-500 to-blue-600 hover:from-purple-600 hover:to-blue-700 text-white"
-              disabled={!canAnalyze}
+              disabled={!canAnalyze || analyzing}
+              onClick={handleAnalyze}
             >
-              <Star className="w-4 h-4 mr-2" />
+              {analyzing ? (
+                <Loader className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <Star className="w-4 h-4 mr-2" />
+              )}
               Analyze Resumes with AI
             </Button>
             {!canAnalyze && (
               <p className="text-red-400 text-sm mt-2">
                 Please fill in all required fields to proceed with analysis.
               </p>
+            )}
+            {analysisError && (
+              <p className="text-red-400 text-sm mt-2">{analysisError}</p>
             )}
           </div>
         </CardContent>
@@ -323,9 +364,7 @@ const ResumeMatcherForm = () => {
             <CardTitle className="text-white flex items-center gap-2">
               <Users className="h-5 w-5" />
               Candidates for {selectedJob.title}
-              <Badge variant="secondary" className="ml-2 bg-slate-700 text-slate-200">
-                {jobApplications.length} resumes
-              </Badge>
+              <span className="ml-2 bg-slate-700 text-slate-200 rounded px-2 py-1 text-xs">{jobApplications.length} resumes</span>
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -356,9 +395,7 @@ const ResumeMatcherForm = () => {
                         </p>
                         <div className="flex items-center gap-4 text-sm text-slate-400">
                           <span>Applied: {new Date(application.applied_at).toLocaleDateString()}</span>
-                          <Badge className="bg-yellow-500/20 text-yellow-300 border-yellow-500/30">
-                            {application.status}
-                          </Badge>
+                          <span className="bg-yellow-500/20 text-yellow-300 border-yellow-500/30 rounded px-2 py-1 text-xs">{application.status}</span>
                         </div>
                       </div>
                       <div className="flex gap-2">
@@ -386,6 +423,34 @@ const ResumeMatcherForm = () => {
                 ))}
               </div>
             )}
+          </CardContent>
+        </Card>
+      )}
+
+      {analysisResults.length > 0 && (
+        <Card className="bg-slate-800 border-slate-700 mt-8">
+          <CardHeader>
+            <CardTitle className="text-white flex items-center gap-2">
+              <Star className="h-5 w-5 text-yellow-400" />
+              AI Resume Match Results
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {analysisResults.map((result, idx) => (
+                <div key={idx} className="p-4 bg-slate-700/30 rounded-lg border border-slate-600/50 flex flex-col gap-2">
+                  <div className="flex items-center gap-2">
+                    <FileText className="h-5 w-5 text-blue-400" />
+                    <span className="text-slate-200 font-medium truncate">{result.filename}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-slate-400 text-xs">Match:</span>
+                    <span className="text-lg font-bold text-green-400">{result.match_percent}%</span>
+                  </div>
+                  <Progress value={result.match_percent} className="h-2 bg-slate-600" />
+                </div>
+              ))}
+            </div>
           </CardContent>
         </Card>
       )}
