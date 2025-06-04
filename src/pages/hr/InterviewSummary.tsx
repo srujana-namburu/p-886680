@@ -1,11 +1,10 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, FileText, Users, Briefcase, Brain, Download, Upload } from "lucide-react";
+import { ArrowLeft, FileText, Users, Briefcase, Brain, Download, Upload, Eye } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import HRNav from "@/components/HRNav";
@@ -124,6 +123,12 @@ const InterviewSummary = () => {
     }
   };
 
+  const handleViewCSV = () => {
+    if (generatedCSVUrl) {
+      window.open(generatedCSVUrl, '_blank');
+    }
+  };
+
   return (
     <div className="min-h-screen bg-slate-900">
       <HRNav />
@@ -232,13 +237,23 @@ const InterviewSummary = () => {
                 </Button>
 
                 {generatedCSVUrl && (
-                  <Button 
-                    onClick={handleDownloadCSV}
-                    className="w-full bg-green-600 hover:bg-green-700 text-white"
-                  >
-                    <Download className="w-4 h-4 mr-2" />
-                    Download Generated CSV
-                  </Button>
+                  <div className="space-y-2">
+                    <Button 
+                      onClick={handleViewCSV}
+                      className="w-full bg-green-600 hover:bg-green-700 text-white"
+                    >
+                      <Eye className="w-4 h-4 mr-2" />
+                      View Generated CSV
+                    </Button>
+                    <Button 
+                      onClick={handleDownloadCSV}
+                      variant="outline"
+                      className="w-full border-green-600 text-green-400 hover:bg-green-600 hover:text-white"
+                    >
+                      <Download className="w-4 h-4 mr-2" />
+                      Download CSV
+                    </Button>
+                  </div>
                 )}
               </CardContent>
             </Card>
@@ -261,7 +276,7 @@ const InterviewSummary = () => {
                       </p>
                       <div className="bg-slate-700 p-4 rounded-lg">
                         <p className="text-slate-200 text-sm">
-                          <strong>File contains:</strong> Candidate ID, Name, Interviewer, Job ID, and AI-generated interview feedback
+                          <strong>File contains:</strong> Candidate ID, Name, Interviewer (HR who created the job), Job ID, and AI-generated interview feedback
                         </p>
                       </div>
                     </div>

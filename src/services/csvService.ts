@@ -61,13 +61,27 @@ const convertToCSV = (data: CandidateInterviewData[]): string => {
 export const csvService = {
   async generateInterviewFeedbackCSV(jobId: string): Promise<string | null> {
     try {
+      // Get job details with the HR who created it
+      const { data: job, error: jobError } = await supabase
+        .from('job_postings')
+        .select(`
+          *,
+          creator:profiles!job_postings_posted_by_fkey(full_name)
+        `)
+        .eq('id', jobId)
+        .single();
+
+      if (jobError) {
+        console.error('Error fetching job:', jobError);
+        return null;
+      }
+
       // Get applications for the job
       const { data: applications, error: appError } = await supabase
         .from('applications')
         .select(`
           *,
-          candidate:profiles!applications_candidate_id_fkey(*),
-          interviews(*, interviewer:profiles!interviews_interviewer_id_fkey(*))
+          candidate:profiles!applications_candidate_id_fkey(*)
         `)
         .eq('job_id', jobId);
 
@@ -82,14 +96,12 @@ export const csvService = {
       }
 
       // Prepare CSV data
+      const hrInterviewer = job.creator?.full_name || 'HR Manager';
       const csvData: CandidateInterviewData[] = applications.map(app => {
-        const interview = app.interviews?.[0]; // Get first interview if exists
-        const interviewer = interview?.interviewer?.full_name || 'TBD';
-        
         return {
           candidate_id: app.candidate_id,
           candidate_name: app.candidate?.full_name || 'Unknown Candidate',
-          interviewer: interviewer,
+          interviewer: hrInterviewer,
           job_id: jobId,
           interview_feedback: generateRealisticFeedback()
         };

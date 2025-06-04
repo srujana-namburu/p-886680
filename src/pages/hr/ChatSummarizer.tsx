@@ -5,19 +5,33 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, MessageSquare, Users, Brain, Upload } from "lucide-react";
+import { ArrowLeft, MessageSquare, Users, Brain, Upload, Briefcase } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import HRNav from "@/components/HRNav";
-import { useApplications } from "@/hooks/useSupabaseData";
+import { useAllJobs, useApplications } from "@/hooks/useSupabaseData";
 
 const ChatSummarizer = () => {
   const { toast } = useToast();
+  const { data: jobs = [] } = useAllJobs();
   const { data: applications = [] } = useApplications();
+  const [selectedJobId, setSelectedJobId] = useState('');
   const [selectedCandidateId, setSelectedCandidateId] = useState('');
   const [chatTranscript, setChatTranscript] = useState('');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysis, setAnalysis] = useState<any>(null);
+
+  // Filter candidates based on selected job
+  const filteredCandidates = selectedJobId 
+    ? applications.filter(app => app.job_id === selectedJobId)
+    : [];
+
+  const handleJobSelect = (jobId: string) => {
+    setSelectedJobId(jobId);
+    // Clear candidate selection when job changes
+    setSelectedCandidateId('');
+    setChatTranscript('');
+  };
 
   const handleCandidateSelect = (candidateId: string) => {
     setSelectedCandidateId(candidateId);
@@ -27,10 +41,10 @@ const ChatSummarizer = () => {
   };
 
   const handleAnalyze = async () => {
-    if (!selectedCandidateId || !chatTranscript) {
+    if (!selectedJobId) {
       toast({
         title: "Missing Information",
-        description: "Please select a candidate and provide chat transcript.",
+        description: "Please select a job position.",
         variant: "destructive",
       });
       return;
@@ -42,11 +56,15 @@ const ChatSummarizer = () => {
       // Simulate AI processing
       await new Promise(resolve => setTimeout(resolve, 2000));
       
-      const selectedApplication = applications.find(app => app.id === selectedCandidateId);
+      const selectedJob = jobs.find(job => job.id === selectedJobId);
+      const selectedApplication = selectedCandidateId 
+        ? applications.find(app => app.id === selectedCandidateId)
+        : null;
       
       // Mock analysis result
       const mockAnalysis = {
-        candidateName: selectedApplication?.candidate?.full_name || 'Unknown Candidate',
+        jobTitle: selectedJob?.title || 'Unknown Position',
+        candidateName: selectedApplication?.candidate?.full_name || 'General Analysis',
         totalMessages: Math.floor(Math.random() * 50) + 20,
         conversationDuration: `${Math.floor(Math.random() * 60) + 30} minutes`,
         sentimentScore: Math.floor(Math.random() * 30) + 70, // 70-100%
@@ -117,13 +135,36 @@ const ChatSummarizer = () => {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
-                  <Label className="text-slate-200">Select Candidate *</Label>
-                  <Select value={selectedCandidateId} onValueChange={handleCandidateSelect}>
+                  <Label className="text-slate-200">Job Position *</Label>
+                  <Select value={selectedJobId} onValueChange={handleJobSelect}>
                     <SelectTrigger className="bg-slate-700 border-slate-600 text-white">
-                      <SelectValue placeholder="Choose candidate to analyze..." />
+                      <SelectValue placeholder="Select job position..." />
                     </SelectTrigger>
                     <SelectContent className="bg-slate-700 border-slate-600">
-                      {applications.map((application) => (
+                      {jobs.map((job) => (
+                        <SelectItem key={job.id} value={job.id} className="text-white hover:bg-slate-600">
+                          <div className="flex items-center gap-2">
+                            <Briefcase className="h-4 w-4" />
+                            {job.title} - {job.location}
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <Label className="text-slate-200">Select Candidate (Optional)</Label>
+                  <Select 
+                    value={selectedCandidateId} 
+                    onValueChange={handleCandidateSelect}
+                    disabled={!selectedJobId}
+                  >
+                    <SelectTrigger className="bg-slate-700 border-slate-600 text-white">
+                      <SelectValue placeholder={selectedJobId ? "Choose candidate to analyze..." : "Select job first..."} />
+                    </SelectTrigger>
+                    <SelectContent className="bg-slate-700 border-slate-600">
+                      {filteredCandidates.map((application) => (
                         <SelectItem key={application.id} value={application.id} className="text-white hover:bg-slate-600">
                           <div className="flex items-center gap-2">
                             <Users className="h-4 w-4" />
@@ -141,7 +182,7 @@ const ChatSummarizer = () => {
                 </div>
 
                 <div>
-                  <Label htmlFor="chatTranscript" className="text-slate-200">Chat Transcript *</Label>
+                  <Label htmlFor="chatTranscript" className="text-slate-200">Chat Transcript (Optional)</Label>
                   <Textarea
                     id="chatTranscript"
                     value={chatTranscript}
@@ -161,7 +202,7 @@ const ChatSummarizer = () => {
                 
                 <Button 
                   onClick={handleAnalyze}
-                  disabled={isAnalyzing}
+                  disabled={isAnalyzing || !selectedJobId}
                   className="w-full bg-blue-600 hover:bg-blue-700 text-white"
                 >
                   {isAnalyzing ? (
@@ -191,6 +232,7 @@ const ChatSummarizer = () => {
                   <div className="space-y-6">
                     <div className="border-b border-slate-700 pb-4">
                       <h3 className="font-semibold text-white mb-2">Conversation Overview</h3>
+                      <p className="text-slate-300"><strong>Job Position:</strong> {analysis.jobTitle}</p>
                       <p className="text-slate-300"><strong>Candidate:</strong> {analysis.candidateName}</p>
                       <p className="text-slate-300"><strong>Duration:</strong> {analysis.conversationDuration}</p>
                       <p className="text-slate-300"><strong>Messages:</strong> {analysis.totalMessages}</p>
@@ -245,7 +287,7 @@ const ChatSummarizer = () => {
                 ) : (
                   <div className="text-center py-12">
                     <MessageSquare className="h-16 w-16 text-slate-600 mx-auto mb-4" />
-                    <p className="text-slate-400">Select a candidate and provide chat transcript to see analysis results</p>
+                    <p className="text-slate-400">Select a job position to start analyzing chat conversations</p>
                   </div>
                 )}
               </CardContent>
