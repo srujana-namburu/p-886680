@@ -29,7 +29,8 @@ def analyze_resumes():
         print("[INFO] Request received")
 
         jd_text = request.form.get("jd")
-        top_n = int(request.form.get("top_n", 5))
+        n = request.form.get("n")
+        top_n = int(n) if n else 5  # Use provided n if available, otherwise default to 5
 
         if not jd_text:
             return jsonify({"error": "Job description is required"}), 400
