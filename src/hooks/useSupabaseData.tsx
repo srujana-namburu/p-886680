@@ -59,7 +59,34 @@ export const useUserApplications = () => {
   
   return useQuery({
     queryKey: ['user-applications', user?.id],
-    queryFn: () => user ? applicationService.getUserApplications(user.id) : Promise.resolve([]),
+    queryFn: async () => {
+      if (!user) return [];
+      
+      // Fetch applications with complete job and company data
+      const applications = await applicationService.getUserApplications(user.id);
+      
+      // For each application, ensure we have complete job data
+      const enrichedApplications = await Promise.all(
+        applications.map(async (app) => {
+          if (app.job_id && (!app.job || !app.job.title)) {
+            try {
+              // Fetch complete job data if missing
+              const jobData = await jobService.getJobById(app.job_id);
+              return {
+                ...app,
+                job: jobData
+              };
+            } catch (error) {
+              console.error('Error fetching job data for application:', error);
+              return app;
+            }
+          }
+          return app;
+        })
+      );
+      
+      return enrichedApplications;
+    },
     enabled: !!user,
     staleTime: 2 * 60 * 1000,
   });

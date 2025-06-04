@@ -27,10 +27,10 @@ const InterviewSummary = () => {
     : applications;
 
   const handleGenerate = async () => {
-    if (!selectedJobId || !selectedCandidateId || !interviewNotes) {
+    if (!selectedJobId) {
       toast({
         title: "Missing Information",
-        description: "Please select a job, candidate, and provide interview notes.",
+        description: "Please select a job position.",
         variant: "destructive",
       });
       return;
@@ -44,10 +44,12 @@ const InterviewSummary = () => {
       
       // Mock summary result
       const selectedJob = jobs.find(job => job.id === selectedJobId);
-      const selectedApplication = applications.find(app => app.id === selectedCandidateId);
+      const selectedApplication = selectedCandidateId 
+        ? applications.find(app => app.id === selectedCandidateId)
+        : null;
       
       const mockSummary = {
-        candidateName: selectedApplication?.candidate?.full_name || 'Unknown Candidate',
+        candidateName: selectedApplication?.candidate?.full_name || 'General Interview',
         jobTitle: selectedJob?.title || 'Unknown Position',
         overallRating: Math.floor(Math.random() * 3) + 3, // 3-5 rating
         technicalSkills: Math.floor(Math.random() * 2) + 4, // 4-5 rating
@@ -132,14 +134,14 @@ const InterviewSummary = () => {
                 </div>
 
                 <div>
-                  <Label className="text-slate-200">Candidate Name *</Label>
+                  <Label className="text-slate-200">Candidate Name (Optional)</Label>
                   <Select 
                     value={selectedCandidateId} 
                     onValueChange={setSelectedCandidateId}
                     disabled={!selectedJobId}
                   >
                     <SelectTrigger className="bg-slate-700 border-slate-600 text-white">
-                      <SelectValue placeholder={selectedJobId ? "Select candidate..." : "Select job first..."} />
+                      <SelectValue placeholder={selectedJobId ? "Select candidate (optional)..." : "Select job first..."} />
                     </SelectTrigger>
                     <SelectContent className="bg-slate-700 border-slate-600">
                       {filteredCandidates.map((application) => (
@@ -155,13 +157,13 @@ const InterviewSummary = () => {
                 </div>
 
                 <div>
-                  <Label htmlFor="interviewNotes" className="text-slate-200">Interview Notes *</Label>
+                  <Label htmlFor="interviewNotes" className="text-slate-200">Interview Notes (Optional)</Label>
                   <Textarea
                     id="interviewNotes"
                     value={interviewNotes}
                     onChange={(e) => setInterviewNotes(e.target.value)}
                     className="bg-slate-700 border-slate-600 text-white min-h-48"
-                    placeholder="Enter detailed interview notes, observations, and candidate responses..."
+                    placeholder="Enter detailed interview notes, observations, and candidate responses... (optional)"
                   />
                 </div>
                 
@@ -245,7 +247,7 @@ const InterviewSummary = () => {
                 ) : (
                   <div className="text-center py-12">
                     <FileText className="h-16 w-16 text-slate-600 mx-auto mb-4" />
-                    <p className="text-slate-400">Select interview details and provide notes to generate summary</p>
+                    <p className="text-slate-400">Select job position to generate interview summary</p>
                   </div>
                 )}
               </CardContent>
